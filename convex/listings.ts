@@ -23,6 +23,18 @@ async function withPhotoUrls(ctx: QueryCtx, listings: Doc<"listings">[]) {
   );
 }
 
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const listings = await ctx.db
+      .query("listings")
+      .order("desc")
+      .filter((q) => q.neq(q.field("status"), "draft"))
+      .take(FEED_LIMIT);
+    return await withPhotoUrls(ctx, listings);
+  },
+});
+
 export const discover = query({
   args: {},
   handler: async (ctx) => {

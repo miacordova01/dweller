@@ -210,7 +210,6 @@ function FindsEmpty({ onImport }: { onImport: () => void }) {
       <Button
         testID="empty-import"
         label="Import a listing"
-        icon={<AiMark />}
         onPress={onImport}
       />
     </View>
@@ -320,7 +319,6 @@ export default function ListingsScreen() {
   return (
     <View style={styles.screen}>
       <FlatList
-        key={feed}
         data={listings ?? []}
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => <ListingCard listing={item} />}
@@ -335,7 +333,9 @@ export default function ListingsScreen() {
           </View>
         }
         ListFooterComponent={
-          feed === "discover" ? <AddListingForm /> : undefined
+          <View style={feed !== "discover" && styles.hidden}>
+            <AddListingForm />
+          </View>
         }
         ListEmptyComponent={
           listings === undefined ? (
@@ -371,6 +371,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   listHeader: { gap: space.md },
+  hidden: { display: "none" },
   segmented: {
     flexDirection: "row",
     backgroundColor: colors.lavender,
