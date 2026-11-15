@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View, type ScrollViewInstance } from "react-native";
 
-import { api } from "../../../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import { TopBar } from "@/components/TopBar";
 import {
   AgentChip,

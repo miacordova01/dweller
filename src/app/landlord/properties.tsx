@@ -4,7 +4,7 @@ import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { api } from "../../../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import { TopBar } from "@/components/TopBar";
 import { BellButton, Chip, EmptyState, LandlordScreen, Loading, NoLandlord } from "@/features/landlord/ui";
 import { formatDate, formatRent } from "@/lib/listings";

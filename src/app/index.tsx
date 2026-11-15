@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { api } from "../../../convex/_generated/api";
+import { api } from "../../convex/_generated/api";
 import { BellButton } from "@/components/BellButton";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon, type IconName } from "@/components/Icon";

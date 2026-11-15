@@ -1,8 +1,8 @@
 import { useQuery } from "convex/react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { api } from "../../../../convex/_generated/api";
-import type { Doc } from "../../../../convex/_generated/dataModel";
+import { api } from "../../../convex/_generated/api";
+import type { Doc } from "../../../convex/_generated/dataModel";
 import {
   Avatar,
   Card,

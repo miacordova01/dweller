@@ -1,8 +1,7 @@
 import { router } from "expo-router";
-import { BottomTabBarHeightContext } from "expo-router/js-tabs";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Image } from "expo-image";
-import { use, type ReactNode, type Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -35,14 +34,13 @@ export function LandlordScreen({
   scrollRef?: Ref<ScrollViewInstance>;
 }) {
   const insets = useSafeAreaInsets();
-  const inTabs = use(BottomTabBarHeightContext) !== undefined;
   return (
     <ScrollView
         ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + space.md, paddingBottom: inTabs ? space.xxl : insets.bottom + space.xxxl },
+          { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.xxxl },
         ]}
       >
         {children}

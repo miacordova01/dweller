@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
-import { api } from "../../../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import { ActivityRow } from "@/components/ActivityRow";
 import { ScreenTitle } from "@/components/ScreenTitle";
 import { agentNames, describe } from "@/features/landlord/describe";

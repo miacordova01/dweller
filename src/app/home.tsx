@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { api } from "../../../convex/_generated/api";
+import { api } from "../../convex/_generated/api";
 import { BellButton } from "@/components/BellButton";
 import { Card } from "@/components/Card";
 import { Chip } from "@/components/Chip";

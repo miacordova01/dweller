@@ -37,12 +37,21 @@ function RootStack() {
       </Stack.Protected>
       <Stack.Protected guard={!!completed}>
         <Stack.Protected guard={!landlord}>
-          <Stack.Screen name="(renter)" options={{ animation: "fade" }} />
+          <Stack.Screen name="index" options={{ animation: "fade" }} />
+          <Stack.Screen name="saved" options={{ animation: "none" }} />
+          <Stack.Screen name="activity" options={{ animation: "none" }} />
+          <Stack.Screen name="home" options={{ animation: "none" }} />
         </Stack.Protected>
         <Stack.Protected guard={landlord}>
-          <Stack.Screen name="landlord/(tabs)" options={{ animation: "fade" }} />
+          <Stack.Screen name="landlord/overview" options={{ animation: "fade" }} />
+          <Stack.Screen name="landlord/properties" options={{ animation: "none" }} />
+          <Stack.Screen name="landlord/inbox" options={{ animation: "none" }} />
+          <Stack.Screen name="landlord/activity" options={{ animation: "none" }} />
           <Stack.Screen name="landlord/approvals" />
         </Stack.Protected>
+        <Stack.Screen name="profile" options={{ animation: "none" }} />
+        <Stack.Screen name="payments" />
+        <Stack.Screen name="payment-success" />
         <Stack.Screen name="listing/[id]" />
         <Stack.Screen name="assistant" />
         <Stack.Screen name="maintenance" />

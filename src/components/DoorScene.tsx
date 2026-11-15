@@ -28,7 +28,7 @@ export function DoorScene({
   const leafTop = -H * 0.005;
   const leafBox = { left: jamb * 0.85, top: leafTop, width: innerW * 0.92, height: leafH, transformOrigin: "left center" as const };
   const leafRadii = { borderTopRightRadius: H * 0.11, borderBottomRightRadius: H * 0.06, borderTopLeftRadius: H * 0.015, borderBottomLeftRadius: H * 0.015 };
-  const edge = H * 0.028;
+  const edge = H * 0.05;
 
   const outer = `M0 0 H${cx} A${H / 2} ${H / 2} 0 0 1 ${cx} ${H} H0 Z`;
   const inner = `M${jamb} ${band} H${cx} A${r} ${r} 0 0 1 ${cx} ${H - band} H${jamb} Z`;
@@ -36,13 +36,6 @@ export function DoorScene({
 
   const leafStyle = useAnimatedStyle(() => ({
     transform: [
-      { perspective: H * 6 },
-      { rotateY: `${-interpolate(hinge.get(), [0, 1], [REST_ANGLE, OPEN_ANGLE])}deg` },
-    ],
-  }));
-  const edgeStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: -edge },
       { perspective: H * 6 },
       { rotateY: `${-interpolate(hinge.get(), [0, 1], [REST_ANGLE, OPEN_ANGLE])}deg` },
     ],
@@ -70,18 +63,18 @@ export function DoorScene({
         <Svg width={W * 3} height={H * 0.7}>
           <Defs>
             <RadialGradient id="shadow" cx="50%" cy="50%" rx="50%" ry="50%">
-              <Stop offset="0" stopColor="#7A7FDB" stopOpacity={0.4} />
-              <Stop offset="0.55" stopColor="#8E91E2" stopOpacity={0.12} />
+              <Stop offset="0" stopColor="#7A7FDB" stopOpacity={0.3} />
+              <Stop offset="0.35" stopColor="#8E91E2" stopOpacity={0.14} />
               <Stop offset="1" stopColor="#8E91E2" stopOpacity={0} />
             </RadialGradient>
             <RadialGradient id="pool" cx="50%" cy="50%" rx="50%" ry="50%">
-              <Stop offset="0" stopColor="#B072F4" stopOpacity={0.7} />
+              <Stop offset="0" stopColor="#A866F3" stopOpacity={0.8} />
               <Stop offset="0.45" stopColor="#C996F8" stopOpacity={0.3} />
               <Stop offset="1" stopColor="#E6D6FB" stopOpacity={0} />
             </RadialGradient>
           </Defs>
-          <Ellipse cx={W * 0.6} cy={H * 0.33} rx={W * 0.95} ry={H * 0.09} fill="url(#shadow)" />
-          <Ellipse cx={W * 1.55} cy={H * 0.34} rx={W * 0.6} ry={H * 0.13} fill="url(#pool)" />
+          <Ellipse cx={W * 0.6} cy={H * 0.34} rx={W * 1.05} ry={H * 0.22} fill="url(#shadow)" />
+          <Ellipse cx={W * 1.6} cy={H * 0.36} rx={W * 0.7} ry={H * 0.2} fill="url(#pool)" />
         </Svg>
       </Animated.View>
 
@@ -125,9 +118,6 @@ export function DoorScene({
           <Path d={inner} fill="none" stroke="url(#rim)" strokeWidth={H * 0.014} />
         </Svg>
 
-        <Animated.View style={[styles.abs, leafBox, edgeStyle]}>
-          <View style={[StyleSheet.absoluteFill, leafRadii, { backgroundColor: "#9C9FEA" }]} />
-        </Animated.View>
 
         <Animated.View style={[styles.abs, leafBox, leafStyle]}>
           <View style={[StyleSheet.absoluteFill, styles.clip, leafRadii]}>
@@ -140,22 +130,23 @@ export function DoorScene({
                 </LinearGradient>
               </Defs>
               <Path d={`M0 0 H${leafBox.width} V${leafH} H0 Z`} fill="url(#leaf)" />
+              <Path d={`M0 0 H${edge} V${leafH} H0 Z`} fill="#9C9FEA" />
             </Svg>
           </View>
           <Animated.View
             style={[
               styles.knob,
               {
-                width: H * 0.06,
-                height: H * 0.06,
-                borderRadius: H * 0.03,
-                left: leafBox.width * 0.82 - H * 0.03,
-                top: leafH * 0.6 - H * 0.03,
+                width: H * 0.075,
+                height: H * 0.075,
+                borderRadius: H * 0.0375,
+                left: leafBox.width * 0.8 - H * 0.0375,
+                top: leafH * 0.6 - H * 0.0375,
               },
               knobStyle,
             ]}
           >
-            <View style={[styles.knobLight, { width: H * 0.022, height: H * 0.022, borderRadius: H * 0.011, left: H * 0.01, top: H * 0.009 }]} />
+            <View style={[styles.knobLight, { width: H * 0.026, height: H * 0.026, borderRadius: H * 0.013, left: H * 0.014, top: H * 0.012 }]} />
           </Animated.View>
         </Animated.View>
       </Animated.View>
