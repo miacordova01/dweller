@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 
 export const list = query({
@@ -22,7 +22,24 @@ export const add = mutation({
   },
   returns: v.id("listings"),
   handler: async (ctx, args) => {
-    return await ctx.db.insert("listings", { ...args, createdAt: Date.now() });
+    const listing = {
+      ...args,
+      title: args.title.trim(),
+      address: args.address.trim(),
+      neighborhood: args.neighborhood.trim(),
+      availableFrom: args.availableFrom.trim(),
+      landlordName: args.landlordName.trim(),
+      photoUrl: args.photoUrl?.trim() || undefined,
+    };
+    for (const field of ["title", "address", "neighborhood", "availableFrom", "landlordName"] as const) {
+      if (listing[field] === "") throw new ConvexError(`${field} is required.`);
+    }
+    for (const field of ["rentMonthly", "bedrooms", "bathrooms"] as const) {
+      if (!Number.isFinite(listing[field]) || listing[field] < 0) {
+        throw new ConvexError(`${field} must be a non-negative number.`);
+      }
+    }
+    return await ctx.db.insert("listings", { ...listing, createdAt: Date.now() });
   },
 });
 
