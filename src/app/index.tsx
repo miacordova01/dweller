@@ -17,11 +17,11 @@ const emptyForm = {
   title: "",
   address: "",
   neighborhood: "",
+  city: "",
   rentMonthly: "",
   bedrooms: "",
   bathrooms: "",
   availableFrom: "",
-  landlordName: "",
   photoUrl: "",
 };
 
@@ -40,6 +40,7 @@ const fields: {
     label: "Neighborhood",
     placeholder: "Mission District",
   },
+  { key: "city", label: "City", placeholder: "San Francisco" },
   {
     key: "rentMonthly",
     label: "Rent per month ($)",
@@ -49,7 +50,6 @@ const fields: {
   { key: "bedrooms", label: "Bedrooms", placeholder: "1", numeric: true },
   { key: "bathrooms", label: "Bathrooms", placeholder: "1", numeric: true },
   { key: "availableFrom", label: "Available from", placeholder: "2026-12-01" },
-  { key: "landlordName", label: "Landlord name", placeholder: "Your name" },
   {
     key: "photoUrl",
     label: "Photo URL (optional)",
@@ -62,6 +62,27 @@ function formatBeds(bedrooms: number) {
   return `${bedrooms} bed${bedrooms === 1 ? "" : "s"}`;
 }
 
+function formatRent(cents: number) {
+  return (cents / 100).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  });
+}
+
+function parseDate(text: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
+  if (!match) return null;
+  const [year, month, day] = match.slice(1).map(Number);
+  const ms = Date.UTC(year, month - 1, day);
+  const date = new Date(ms);
+  return date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+    ? ms
+    : null;
+}
+
 function ListingCard({ listing }: { listing: Doc<"listings"> }) {
   return (
     <View style={styles.card}>
@@ -69,7 +90,7 @@ function ListingCard({ listing }: { listing: Doc<"listings"> }) {
       <Text style={styles.cardNeighborhood}>{listing.neighborhood}</Text>
       <View style={styles.cardRow}>
         <Text style={styles.cardRent}>
-          ${listing.rentMonthly.toLocaleString("en-US")}/mo
+          {formatRent(listing.rentMonthlyCents)}/mo
         </Text>
         <Text style={styles.cardMeta}>
           {formatBeds(listing.bedrooms)} · {listing.bathrooms} bath
@@ -105,6 +126,11 @@ function AddListingForm() {
       setError("Rent, bedrooms, and bathrooms must be non-negative numbers.");
       return;
     }
+    const availableFrom = parseDate(form.availableFrom);
+    if (availableFrom === null) {
+      setError("Available from must be a date like 2026-12-01.");
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
@@ -112,11 +138,11 @@ function AddListingForm() {
         title: form.title.trim(),
         address: form.address.trim(),
         neighborhood: form.neighborhood.trim(),
-        rentMonthly,
+        city: form.city.trim(),
+        rentMonthlyCents: Math.round(rentMonthly * 100),
         bedrooms,
         bathrooms,
-        availableFrom: form.availableFrom.trim(),
-        landlordName: form.landlordName.trim(),
+        availableFrom,
         photoUrl: form.photoUrl.trim() || undefined,
       });
       setForm(emptyForm);

@@ -13,33 +13,46 @@ export const add = mutation({
     title: v.string(),
     address: v.string(),
     neighborhood: v.string(),
-    rentMonthly: v.number(),
+    city: v.string(),
+    rentMonthlyCents: v.number(),
     bedrooms: v.number(),
     bathrooms: v.number(),
-    availableFrom: v.string(),
+    availableFrom: v.optional(v.number()),
     photoUrl: v.optional(v.string()),
-    landlordName: v.string(),
   },
   returns: v.id("listings"),
-  handler: async (ctx, args) => {
+  handler: async (ctx, { photoUrl, ...args }) => {
     const listing = {
       ...args,
       title: args.title.trim(),
       address: args.address.trim(),
       neighborhood: args.neighborhood.trim(),
-      availableFrom: args.availableFrom.trim(),
-      landlordName: args.landlordName.trim(),
-      photoUrl: args.photoUrl?.trim() || undefined,
+      city: args.city.trim(),
     };
-    for (const field of ["title", "address", "neighborhood", "availableFrom", "landlordName"] as const) {
+    for (const field of ["title", "address", "neighborhood", "city"] as const) {
       if (listing[field] === "") throw new ConvexError(`${field} is required.`);
     }
-    for (const field of ["rentMonthly", "bedrooms", "bathrooms"] as const) {
+    if (!Number.isInteger(listing.rentMonthlyCents) || listing.rentMonthlyCents < 0) {
+      throw new ConvexError("rentMonthlyCents must be a non-negative integer.");
+    }
+    for (const field of ["bedrooms", "bathrooms"] as const) {
       if (!Number.isFinite(listing[field]) || listing[field] < 0) {
         throw new ConvexError(`${field} must be a non-negative number.`);
       }
     }
-    return await ctx.db.insert("listings", { ...listing, createdAt: Date.now() });
+    if (listing.availableFrom !== undefined && !Number.isFinite(listing.availableFrom)) {
+      throw new ConvexError("availableFrom must be a timestamp.");
+    }
+    const trimmedPhotoUrl = photoUrl?.trim();
+    return await ctx.db.insert("listings", {
+      ...listing,
+      amenities: [],
+      photoStorageIds: [],
+      photoUrls: trimmedPhotoUrl ? [trimmedPhotoUrl] : [],
+      status: "active",
+      source: "dweller",
+      missingFields: [],
+    });
   },
 });
 
@@ -53,36 +66,41 @@ export const seed = internalMutation({
         title: "Sunny garden-level studio ADU",
         address: "1452 Diamond St",
         neighborhood: "Noe Valley",
-        rentMonthly: 2450,
+        rentMonthlyCents: 245000,
         bedrooms: 0,
         bathrooms: 1,
-        availableFrom: "2026-12-01",
-        landlordName: "Priya Raman",
+        availableFrom: Date.UTC(2026, 11, 1),
       },
       {
         title: "Spare room in a Victorian flat, shared kitchen",
         address: "3218 21st St",
         neighborhood: "Mission District",
-        rentMonthly: 1650,
+        rentMonthlyCents: 165000,
         bedrooms: 1,
         bathrooms: 1,
-        availableFrom: "2026-12-15",
-        landlordName: "Daniel Ortiz",
+        availableFrom: Date.UTC(2026, 11, 15),
       },
       {
         title: "Two-bedroom upper unit near Golden Gate Park",
         address: "1739 9th Ave",
         neighborhood: "Inner Sunset",
-        rentMonthly: 3900,
+        rentMonthlyCents: 390000,
         bedrooms: 2,
         bathrooms: 1.5,
-        availableFrom: "2027-01-01",
-        landlordName: "Helen Wu",
+        availableFrom: Date.UTC(2027, 0, 1),
       },
     ];
-    const now = Date.now();
-    for (const [i, listing] of listings.entries()) {
-      await ctx.db.insert("listings", { ...listing, createdAt: now + i });
+    for (const listing of listings) {
+      await ctx.db.insert("listings", {
+        ...listing,
+        city: "San Francisco",
+        amenities: [],
+        photoStorageIds: [],
+        photoUrls: [],
+        status: "active",
+        source: "dweller",
+        missingFields: [],
+      });
     }
     return listings.length;
   },
