@@ -83,3 +83,15 @@ export const saveDiscoverFilters = mutation({
     return null;
   },
 });
+
+export const currentLease = query({
+  args: {},
+  handler: async (ctx) => {
+    const renter = await currentRenter(ctx);
+    if (renter === null) return null;
+    const lease = await activeLease(ctx, renter.userId);
+    if (lease === null) return null;
+    const listing = await ctx.db.get("listings", lease.listingId);
+    return { ...lease, address: listing?.address ?? "Your home" };
+  },
+});

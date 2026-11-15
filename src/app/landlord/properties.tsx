@@ -6,13 +6,24 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { api } from "../../../convex/_generated/api";
 import { TopBar } from "@/components/TopBar";
-import { BellButton, Chip, EmptyState, LandlordScreen, Loading, NoLandlord } from "@/features/landlord/ui";
+import {
+  BellButton,
+  Chip,
+  EmptyState,
+  LandlordScreen,
+  Loading,
+  NoLandlord,
+} from "@/features/landlord/ui";
 import { formatDate, formatRent } from "@/lib/listings";
 import { colors, fonts, radius, shadow, space, type } from "@/theme";
 
 type Filter = "all" | "occupied" | "vacant";
 
-function metaLine(bedrooms: number, bathrooms: number, squareFeet: number | null) {
+function metaLine(
+  bedrooms: number,
+  bathrooms: number,
+  squareFeet: number | null,
+) {
   return [
     bedrooms === 0 ? "Studio" : bedrooms + " bd",
     bathrooms + " ba",
@@ -45,12 +56,20 @@ export default function LandlordProperties() {
 
   const occupiedCount = units.filter((u) => u.occupied).length;
   const needle = search.trim().toLowerCase();
-  const shown = units.filter(
-    (u) =>
-      (filter === "all" || (filter === "occupied") === u.occupied) &&
-      (needle === "" ||
-        [u.title, u.address, u.neighborhood].some((field) => field.toLowerCase().includes(needle))),
-  );
+  const shown = [...units]
+    .sort(
+      (a, b) =>
+        Number(b.occupied) - Number(a.occupied) ||
+        Number(!!b.photoUrl) - Number(!!a.photoUrl),
+    )
+    .filter(
+      (u) =>
+        (filter === "all" || (filter === "occupied") === u.occupied) &&
+        (needle === "" ||
+          [u.title, u.address, u.neighborhood].some((field) =>
+            field.toLowerCase().includes(needle),
+          )),
+    );
 
   const pills: { key: Filter; label: string }[] = [
     { key: "all", label: "All " + units.length },
@@ -90,7 +109,9 @@ export default function LandlordProperties() {
               onPress={() => setFilter(pill.key)}
               style={[styles.pill, active && styles.pillActive]}
             >
-              <Text style={[styles.pillText, active && styles.pillTextActive]}>{pill.label}</Text>
+              <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                {pill.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -99,30 +120,55 @@ export default function LandlordProperties() {
       {shown.length === 0 ? (
         <EmptyState
           title={units.length === 0 ? "No properties yet" : "No matches"}
-          body={units.length === 0 ? "List a unit and it will show up here." : "Try a different search or filter."}
+          body={
+            units.length === 0
+              ? "List a unit and it will show up here."
+              : "Try a different search or filter."
+          }
         />
       ) : (
         shown.map((unit) => (
           <View key={unit._id} style={styles.card}>
-            <Image
-              source={unit.photoUrl ? { uri: unit.photoUrl } : undefined}
-              style={styles.photo}
-              contentFit="cover"
-              accessibilityLabel={unit.title}
-            />
+            {unit.photoUrl ? (
+              <Image
+                source={{ uri: unit.photoUrl }}
+                style={styles.photo}
+                contentFit="cover"
+                accessibilityLabel={unit.title}
+              />
+            ) : (
+              <View style={[styles.photo, styles.noPhoto]}>
+                <SymbolView
+                  name={{ ios: "house", android: "home", web: "home" }}
+                  size={22}
+                  tintColor={colors.primary}
+                />
+                <Text style={type.caption}>
+                  No photos yet · add some to fill it faster
+                </Text>
+              </View>
+            )}
             <View style={styles.body}>
               <View style={styles.priceRow}>
                 <Text style={type.price}>
                   {formatRent(unit.rentCents)}
                   <Text style={styles.per}>/mo</Text>
                 </Text>
-                <Text style={type.caption}>{unit.occupied ? "rent coming in" : "asking"}</Text>
+                <Text style={type.caption}>
+                  {unit.occupied ? "rent coming in" : "asking"}
+                </Text>
               </View>
-              <Text style={styles.meta}>{metaLine(unit.bedrooms, unit.bathrooms, unit.squareFeet)}</Text>
+              <Text style={styles.meta}>
+                {metaLine(unit.bedrooms, unit.bathrooms, unit.squareFeet)}
+              </Text>
               <View style={styles.bottomRow}>
                 <View style={styles.place}>
                   <SymbolView
-                    name={{ ios: "mappin.and.ellipse", android: "location_on", web: "location_on" }}
+                    name={{
+                      ios: "mappin",
+                      android: "location_on",
+                      web: "location_on",
+                    }}
                     size={14}
                     tintColor={colors.inkMuted}
                   />
@@ -136,7 +182,9 @@ export default function LandlordProperties() {
                   <Chip
                     label={
                       unit.openInquiries > 0
-                        ? "Vacant · " + unit.openInquiries + (unit.openInquiries === 1 ? " inquiry" : " inquiries")
+                        ? "Vacant · " +
+                          unit.openInquiries +
+                          (unit.openInquiries === 1 ? " inquiry" : " inquiries")
                         : "Vacant"
                     }
                   />
@@ -145,7 +193,9 @@ export default function LandlordProperties() {
               {unit.occupied && unit.tenantName && (
                 <Text style={type.caption}>
                   {unit.tenantName}
-                  {unit.leaseEnd ? " · lease to " + formatDate(unit.leaseEnd) : ""}
+                  {unit.leaseEnd
+                    ? " · lease to " + formatDate(unit.leaseEnd)
+                    : ""}
                 </Text>
               )}
             </View>
@@ -167,7 +217,13 @@ const styles = StyleSheet.create({
     minHeight: 52,
     boxShadow: shadow.card,
   },
-  searchInput: { flex: 1, ...fonts.regular, fontSize: 15, color: colors.ink, paddingVertical: space.md },
+  searchInput: {
+    flex: 1,
+    ...fonts.regular,
+    fontSize: 15,
+    color: colors.ink,
+    paddingVertical: space.md,
+  },
   pills: { flexDirection: "row", gap: space.sm },
   pill: {
     justifyContent: "center",
@@ -186,11 +242,31 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     boxShadow: shadow.card,
   },
-  photo: { width: "100%", aspectRatio: 4 / 3, borderRadius: radius.md - 2, backgroundColor: colors.lavender },
-  body: { paddingHorizontal: space.sm, paddingTop: space.md, paddingBottom: space.sm, gap: 4 },
-  priceRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  noPhoto: { alignItems: "center", justifyContent: "center", gap: 8 },
+  photo: {
+    width: "100%",
+    aspectRatio: 4 / 3,
+    borderRadius: radius.md - 2,
+    backgroundColor: colors.lavender,
+  },
+  body: {
+    paddingHorizontal: space.sm,
+    paddingTop: space.md,
+    paddingBottom: space.sm,
+    gap: 4,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+  },
   per: { ...fonts.bold, fontSize: 15, color: colors.inkMuted },
   meta: { ...type.body, fontSize: 15 },
-  bottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.sm,
+  },
   place: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 },
 });
