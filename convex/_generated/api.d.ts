@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as detail from "../detail.js";
 import type * as discovery from "../discovery.js";
 import type * as landlord from "../landlord.js";
 import type * as listings from "../listings.js";
@@ -20,6 +21,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  detail: typeof detail;
   discovery: typeof discovery;
   landlord: typeof landlord;
   listings: typeof listings;
