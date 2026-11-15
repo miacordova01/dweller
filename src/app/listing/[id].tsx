@@ -83,9 +83,10 @@ export default function ListingDetail() {
   }
 
   const galleryHeight = Math.round(width * 0.92);
-  const rent = `${formatRent(listing.rentMonthlyCents)}/mo`;
-  const beds = listing.bedrooms === 0 ? "Studio" : `${listing.bedrooms} bd`;
-  const baths = `${listing.bathrooms} ba`;
+  const missing = new Set(listing.missingFields);
+  const rent = missing.has("rentMonthlyCents") ? "Rent unknown" : `${formatRent(listing.rentMonthlyCents)}/mo`;
+  const beds = missing.has("bedrooms") ? null : listing.bedrooms === 0 ? "Studio" : `${listing.bedrooms} bd`;
+  const baths = missing.has("bathrooms") ? null : `${listing.bathrooms} ba`;
   const sqft = listing.squareFeet ? `${listing.squareFeet.toLocaleString("en-US")} sq ft` : null;
   const city = listing.city === "San Francisco" ? "SF" : listing.city;
 
@@ -174,8 +175,8 @@ export default function ListingDetail() {
           </Pressable>
 
           <View style={styles.stats}>
-            <StatTile icon={{ ios: "bed.double", android: "bed", web: "bed" }} label={beds} />
-            <StatTile icon={{ ios: "bathtub", android: "bathtub", web: "bathtub" }} label={baths} />
+            <StatTile icon={{ ios: "bed.double", android: "bed", web: "bed" }} label={beds ?? "— bd"} />
+            <StatTile icon={{ ios: "bathtub", android: "bathtub", web: "bathtub" }} label={baths ?? "— ba"} />
             <StatTile icon={{ ios: "square.dashed", android: "square_foot", web: "square_foot" }} label={sqft ?? "— sq ft"} />
           </View>
 
