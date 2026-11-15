@@ -1,5 +1,7 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { activeLease, currentLandlord, currentRenter } from "./people";
+import { DEFAULT_TIMEZONE } from "./time";
 
 const photo = (id: string) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`;
@@ -365,3 +367,103 @@ export const seedListings = internalMutation({
     return { inserted, skipped: listings.length - inserted };
   },
 });
+
+// Showing hours for the demo landlord and the clauses of Jordan's lease, so
+// the assistant's bookTour and answerLeaseQuestion have real rows to read.
+// Run after landlord:seedLandlordDemo. Safe to run again.
+export const seedAgentDemo = internalMutation({
+  args: {},
+  returns: v.object({ availability: v.number(), leaseClauses: v.number() }),
+  handler: async (ctx) => {
+    const landlord = await currentLandlord(ctx);
+    const renter = await currentRenter(ctx);
+    if (landlord === null || renter === null) {
+      throw new ConvexError("Run landlord:seedLandlordDemo before seeding the agent demo.");
+    }
+    let availability = 0;
+    const hasHours = await ctx.db
+      .query("availability")
+      .withIndex("by_landlord", (q) => q.eq("landlordId", landlord.userId))
+      .first();
+    if (hasHours === null) {
+      for (const window of showingHours) {
+        await ctx.db.insert("availability", {
+          ...window,
+          landlordId: landlord.userId,
+          timezone: DEFAULT_TIMEZONE,
+        });
+        availability++;
+      }
+    }
+    let leaseClauses = 0;
+    const lease = await activeLease(ctx, renter.userId);
+    const hasClauses = lease
+      ? await ctx.db
+          .query("leaseClauses")
+          .withIndex("by_lease_order", (q) => q.eq("leaseId", lease._id))
+          .first()
+      : null;
+    if (lease !== null && hasClauses === null) {
+      for (const [orderIndex, clause] of sanchezLeaseClauses.entries()) {
+        await ctx.db.insert("leaseClauses", { ...clause, leaseId: lease._id, orderIndex });
+        leaseClauses++;
+      }
+    }
+    return { availability, leaseClauses };
+  },
+});
+
+// weekday: 0 = Sunday; minutes from local midnight.
+const showingHours = [
+  { weekday: 3, startMinute: 17 * 60 + 30, endMinute: 19 * 60 },
+  { weekday: 6, startMinute: 10 * 60, endMinute: 13 * 60 },
+  { weekday: 0, startMinute: 11 * 60, endMinute: 14 * 60 },
+];
+
+const sanchezLeaseClauses = [
+  {
+    section: "3.1",
+    heading: "Rent",
+    text: "Tenant shall pay monthly rent of $5,600.00 in advance on or before the first (1st) day of each calendar month, by Zelle or another method Landlord agrees to in writing.",
+  },
+  {
+    section: "3.2",
+    heading: "Late payment",
+    text: "If rent is not received by 11:59 p.m. on the fifth (5th) day of the month, Tenant shall pay a late charge of $150.00. Landlord will not charge a late fee for any month in which rent is received within the five-day grace period.",
+  },
+  {
+    section: "4.1",
+    heading: "Security deposit",
+    text: "Tenant has paid a security deposit of $8,400.00. Within twenty-one (21) days after Tenant vacates, Landlord shall return the deposit less any lawful deductions for unpaid rent, cleaning to the condition at move-in, and damage beyond ordinary wear and tear, with an itemized statement.",
+  },
+  {
+    section: "6.1",
+    heading: "Pets",
+    text: "No animals may be kept on the premises without Landlord's prior written consent, except service and support animals as provided by law. Landlord will not unreasonably withhold consent for one cat or one dog under 40 pounds, subject to an additional security deposit of $500.00.",
+  },
+  {
+    section: "7.1",
+    heading: "Subletting and assignment",
+    text: "Tenant shall not sublet any part of the premises or assign this Agreement without Landlord's prior written consent, which shall not be unreasonably withheld. Short-term rentals of fewer than thirty (30) days are prohibited.",
+  },
+  {
+    section: "8.1",
+    heading: "Repairs and maintenance",
+    text: "Tenant shall promptly report any leak, malfunction, or damage to Landlord through Dweller. Landlord shall make necessary repairs within a reasonable time and shall address conditions affecting health or safety, including loss of water, heat, or electricity, within twenty-four (24) hours of notice.",
+  },
+  {
+    section: "8.4",
+    heading: "Landlord's entry",
+    text: "Except in an emergency, Landlord shall give Tenant at least twenty-four (24) hours' written notice before entering the premises, and shall enter only between 8:00 a.m. and 6:00 p.m. on weekdays unless Tenant agrees otherwise.",
+  },
+  {
+    section: "9.2",
+    heading: "Guests",
+    text: "Tenant may have guests stay for up to fourteen (14) consecutive days, and no more than thirty (30) days in any twelve-month period, without Landlord's written consent.",
+  },
+  {
+    section: "12.1",
+    heading: "Ending the lease",
+    text: "This lease ends on May 31, 2027. Unless either party gives at least sixty (60) days' written notice before that date, the tenancy continues month to month on the same terms. Tenant may end a month-to-month tenancy with thirty (30) days' written notice.",
+  },
+];
