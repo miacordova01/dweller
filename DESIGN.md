@@ -23,7 +23,7 @@ cards, animation that does not serve a task.
 | `primary` | `#7C3AED` | Primary buttons, doorknob, brand moments |
 | `lavender` | `#F1EDFF` | AI surfaces, subtle highlights, pressed states |
 | `sky` | `#A7D8FF` | Background washes, discovery accents |
-| `blue` | `#477CF5` | Links and active states only — never a button fill |
+| `blue` | `#477CF5` | Primary actions INSIDE the app, links, active states |
 | `mint` | `#D9FBE9` | Success, completed tasks |
 
 White and ink dominate. One accent per screen, never all of them.
@@ -36,13 +36,20 @@ decisions — change them here, in one place, if you disagree.
 1. **Ink is `#0B1020`, not `#1B2435`.** The image is the declared primary visual
    reference and `#0B1020` is the chip under the logo. `#1B2435` is dropped;
    use `inkMuted` for secondary text.
-2. **Purple is the primary button colour, not Electric Blue.** The mockup's
-   "Create an account" button is purple and the image labels `#7C3AED` as
-   Primary. Blue is demoted to links and active states. Two competing accent
-   fills would violate the brief's own "one accent per screen" rule.
-3. **Because purple is now the action colour, purple alone no longer signals
-   AI.** AI is marked by a sparkle glyph plus a `lavender` surface. A purple
-   button is just a button; a lavender card with a sparkle is the assistant.
+2. **Purple and blue split by context — corrected after the later panels.**
+   My first reading demoted blue to links only. `reference-renter.png` and
+   `reference-renter-2.png` show the real rule:
+   - **Purple** is brand and AI: the doorknob, the wordmark dot, the welcome
+     screen's "Get started", the AI send button, the "Ask Dweller AI" row.
+   - **Blue** is the primary action once you are inside the app: "Apply now",
+     "Get started" on a listing, "View receipt".
+   - White with a hairline border is the secondary action: "Schedule tour".
+
+   So the first-run CTA is purple, in-app CTAs are blue, and only one of them
+   appears on any given screen. That keeps "one accent per screen" intact.
+3. **AI is marked by the sparkle plus a lavender surface**, not by purple
+   alone. A lavender row with a ✦ and purple text is the assistant; a blue
+   button is an ordinary action.
 4. **Font is Manrope**, per the brief, not Geist/Inter/Plus Jakarta from the
    image panel — that panel was an earlier exploration. Manrope is on Google
    Fonts, so `@expo-google-fonts/manrope` works with no custom asset pipeline.
@@ -189,3 +196,64 @@ states, clear errors, accessible contrast.
 
 Every animation must serve the task. Someone who just wants to find a home, pay
 rent, or report a leak should never be slowed down by the design.
+
+
+---
+
+## 10. In-app screens
+
+`design/reference-renter.png` and `design/reference-renter-2.png` are the
+reference for everything past onboarding. Read them before building any of it.
+
+**Chrome.** Bottom tab bar, labelled icons, the active tab in purple on a
+lavender pill. Cards are white on `canvas`, radius about 16, with a soft
+shadow rather than a border. Screen padding 20. Section headings in Semibold.
+
+**Discover** — wordmark top left, a notification bell top right, a rounded
+search field, then a horizontal row of filter pills (location with a chevron,
+Filters, a people count). Listing cards are a large photo with a heart in the
+top right, then price, a `2 bd · 1 ba · 950 sq ft` meta line, neighbourhood
+with a pin, and a mint "Available Oct 1" chip.
+
+**Listing detail** — full-bleed photo gallery with page dots, back, share and
+save buttons floating on it. Below: price as the headline, the meta line,
+neighbourhood, then a lavender **✦ Ask Dweller AI** row with a chevron. Then
+three bordered stat tiles (bed, bath, sq ft), "About this home", and a
+sticky footer with "Schedule tour" (white, bordered) and "Apply now" (blue).
+
+**Renter home** — "Hi {name}," over "Here's what's happening at home." A row
+of four square quick actions: AI Assist (lavender, purple icon), Discover,
+Request Repair, Pay Rent. Then "Upcoming" with a thumbnail row for the next
+tour, then "My Lease" with an `Active` mint chip, the address, the term, and
+next rent due.
+
+**Dweller AI** — ✦ with the "Dweller AI" title on a soft lavender wash,
+"Hi {name}, How can I help today?", then four action cards each with an icon,
+a title and a one-line description: Schedule a tour, Report a maintenance
+issue, Ask about my lease, Find new listings. A composer pinned to the bottom
+reading "Ask Dweller anything…" with a purple send button.
+
+**Maintenance request** — the photo the tenant took, the issue as an editable
+field, then a vertical status timeline: Request submitted (done, with a
+timestamp), Reviewing & scheduling (current), Repair in progress, Completed.
+Below it a lavender ✦ card describing what the agent is doing right now.
+
+**Confirmation** — a mint circle with a check, a headline, a short line, a
+summary card of rows, then a blue primary and a white secondary button.
+
+### The landlord side
+
+Same components, same tokens, different content. Nav is
+Overview · Properties · Inbox · Activity · Profile.
+
+- **Overview** mirrors renter home: "Hi {name}," / "Here's what needs you."
+  Quick actions: AI Assist, Add listing, Approvals, Rent. Then anything
+  waiting on a human — an application to review, a repair quote to approve —
+  and a rent-collected summary for the month.
+- **Properties** mirrors Discover, but each card is a unit the landlord owns,
+  with an occupancy chip instead of a price chip.
+- **Inbox** is the inquiries the leasing agent is handling, newest first.
+- **Approvals** is the one screen with no renter equivalent: every
+  `agentActions` row with `requiresApproval` and status `proposed`, each with
+  what the agent wants to do and Approve / Decline. This is where the product
+  argument lives — the agent prepares, the human decides.
