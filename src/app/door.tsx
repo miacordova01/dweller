@@ -159,7 +159,7 @@ export default function DoorScreen() {
               wordmarkStyle,
             ]}
           >
-            <Wordmark fontSize={Math.round(width * 0.135)} />
+            <Wordmark fontSize={Math.round(width * 0.18)} />
           </Animated.View>
         </View>
       </Pressable>

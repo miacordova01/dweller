@@ -85,7 +85,7 @@ export function DoorScene({
   }));
   const sceneStyle = useAnimatedStyle(() => ({
     opacity:
-      interpolate(hinge.get(), [0, 0.12], [0, 1], "clamp") *
+      interpolate(hinge.get(), [0, 0.12], [0.6, 1], "clamp") *
       interpolate(expand.get(), [0, 0.25], [1, 0], "clamp"),
     transform: [{ scale: interpolate(expand.get(), [0, 1], [1, 9]) }],
   }));
@@ -95,7 +95,7 @@ export function DoorScene({
   }));
   const floorStyle = useAnimatedStyle(() => ({
     opacity:
-      interpolate(hinge.get(), [0.2, 1], [0, 1], "clamp") *
+      interpolate(hinge.get(), [0, 1], [0.8, 1], "clamp") *
       interpolate(expand.get(), [0, 0.3], [1, 0], "clamp"),
   }));
 
@@ -215,7 +215,7 @@ export function DoorScene({
           </Defs>
           <Path d={`${outer} ${inner}`} fill="url(#band)" fillRule="evenodd" />
         </Svg>
-        <Animated.View style={[StyleSheet.absoluteFill, depthStyle]}>
+        <View style={StyleSheet.absoluteFill}>
           <Svg width={W} height={H}>
             <Defs>
               <LinearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
@@ -230,7 +230,7 @@ export function DoorScene({
               strokeWidth={H * 0.014}
             />
           </Svg>
-        </Animated.View>
+        </View>
 
         <Animated.View style={[styles.abs, leafBox, depthStyle, leafStyle]}>
           <View style={[StyleSheet.absoluteFill, styles.clip, leafRadii]}>
