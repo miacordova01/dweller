@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as detail from "../detail.js";
 import type * as discovery from "../discovery.js";
 import type * as listings from "../listings.js";
 import type * as seed from "../seed.js";
@@ -19,6 +20,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  detail: typeof detail;
   discovery: typeof discovery;
   listings: typeof listings;
   seed: typeof seed;
