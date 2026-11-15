@@ -3,8 +3,6 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -29,16 +27,34 @@ const emptyForm = {
 
 type FormField = keyof typeof emptyForm;
 
-const fields: { key: FormField; label: string; placeholder: string; numeric?: boolean }[] = [
+const fields: {
+  key: FormField;
+  label: string;
+  placeholder: string;
+  numeric?: boolean;
+}[] = [
   { key: "title", label: "Title", placeholder: "Bright room with bay window" },
   { key: "address", label: "Address", placeholder: "123 Valencia St" },
-  { key: "neighborhood", label: "Neighborhood", placeholder: "Mission District" },
-  { key: "rentMonthly", label: "Rent per month ($)", placeholder: "2200", numeric: true },
+  {
+    key: "neighborhood",
+    label: "Neighborhood",
+    placeholder: "Mission District",
+  },
+  {
+    key: "rentMonthly",
+    label: "Rent per month ($)",
+    placeholder: "2200",
+    numeric: true,
+  },
   { key: "bedrooms", label: "Bedrooms", placeholder: "1", numeric: true },
   { key: "bathrooms", label: "Bathrooms", placeholder: "1", numeric: true },
   { key: "availableFrom", label: "Available from", placeholder: "2026-12-01" },
   { key: "landlordName", label: "Landlord name", placeholder: "Your name" },
-  { key: "photoUrl", label: "Photo URL (optional)", placeholder: "https://..." },
+  {
+    key: "photoUrl",
+    label: "Photo URL (optional)",
+    placeholder: "https://...",
+  },
 ];
 
 function formatBeds(bedrooms: number) {
@@ -52,9 +68,12 @@ function ListingCard({ listing }: { listing: Doc<"listings"> }) {
       <Text style={styles.cardTitle}>{listing.title}</Text>
       <Text style={styles.cardNeighborhood}>{listing.neighborhood}</Text>
       <View style={styles.cardRow}>
-        <Text style={styles.cardRent}>${listing.rentMonthly.toLocaleString("en-US")}/mo</Text>
+        <Text style={styles.cardRent}>
+          ${listing.rentMonthly.toLocaleString("en-US")}/mo
+        </Text>
         <Text style={styles.cardMeta}>
-          {formatBeds(listing.bedrooms)} · {listing.bathrooms} bath{listing.bathrooms === 1 ? "" : "s"}
+          {formatBeds(listing.bedrooms)} · {listing.bathrooms} bath
+          {listing.bathrooms === 1 ? "" : "s"}
         </Text>
       </View>
     </View>
@@ -68,7 +87,9 @@ function AddListingForm() {
   const [saving, setSaving] = useState(false);
 
   async function submit() {
-    const missing = fields.find((f) => f.key !== "photoUrl" && form[f.key].trim() === "");
+    const missing = fields.find(
+      (f) => f.key !== "photoUrl" && form[f.key].trim() === "",
+    );
     if (missing) {
       setError(`${missing.label} is required.`);
       return;
@@ -76,7 +97,11 @@ function AddListingForm() {
     const rentMonthly = Number(form.rentMonthly);
     const bedrooms = Number(form.bedrooms);
     const bathrooms = Number(form.bathrooms);
-    if ([rentMonthly, bedrooms, bathrooms].some((n) => !Number.isFinite(n) || n < 0)) {
+    if (
+      [rentMonthly, bedrooms, bathrooms].some(
+        (n) => !Number.isFinite(n) || n < 0,
+      )
+    ) {
       setError("Rent, bedrooms, and bathrooms must be non-negative numbers.");
       return;
     }
@@ -117,7 +142,9 @@ function AddListingForm() {
             placeholderTextColor="#9AA0A6"
             keyboardType={f.numeric ? "decimal-pad" : "default"}
             autoCapitalize={f.key === "photoUrl" ? "none" : "sentences"}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, [f.key]: text }))}
+            onChangeText={(text) =>
+              setForm((prev) => ({ ...prev, [f.key]: text }))
+            }
           />
         </View>
       ))}
@@ -125,11 +152,16 @@ function AddListingForm() {
       <Pressable
         testID="submit-listing"
         accessibilityRole="button"
-        style={({ pressed }) => [styles.button, (pressed || saving) && styles.buttonPressed]}
+        style={({ pressed }) => [
+          styles.button,
+          (pressed || saving) && styles.buttonPressed,
+        ]}
         onPress={submit}
         disabled={saving}
       >
-        <Text style={styles.buttonText}>{saving ? "Saving..." : "Add listing"}</Text>
+        <Text style={styles.buttonText}>
+          {saving ? "Saving..." : "Add listing"}
+        </Text>
       </Pressable>
       <Text style={styles.sectionTitle}>Available now</Text>
     </View>
@@ -140,34 +172,39 @@ export default function ListingsScreen() {
   const listings = useQuery(api.listings.list);
 
   return (
-    <KeyboardAvoidingView
+    <FlatList
+      data={listings ?? []}
+      keyExtractor={(item) => item._id}
+      renderItem={({ item }) => <ListingCard listing={item} />}
+      ListHeaderComponent={<AddListingForm />}
+      ListEmptyComponent={
+        listings === undefined ? (
+          <ActivityIndicator style={styles.empty} />
+        ) : (
+          <Text style={styles.empty}>
+            No listings yet. Add the first one above.
+          </Text>
+        )
+      }
       style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={100}
-    >
-      <FlatList
-        data={listings ?? []}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <ListingCard listing={item} />}
-        ListHeaderComponent={<AddListingForm />}
-        ListEmptyComponent={
-          listings === undefined ? (
-            <ActivityIndicator style={styles.empty} />
-          ) : (
-            <Text style={styles.empty}>No listings yet. Add the first one above.</Text>
-          )
-        }
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      />
-    </KeyboardAvoidingView>
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+      automaticallyAdjustKeyboardInsets
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
+    />
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#F6F5F2" },
   content: { padding: 16, paddingBottom: 48, gap: 12 },
-  sectionTitle: { fontSize: 20, fontWeight: "700", color: "#1F2421", marginTop: 8 },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2421",
+    marginTop: 8,
+  },
   form: { gap: 10 },
   field: { gap: 4 },
   label: { fontSize: 13, fontWeight: "600", color: "#4A514C" },
@@ -204,7 +241,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 17, fontWeight: "600", color: "#1F2421" },
   cardNeighborhood: { fontSize: 14, color: "#5F6661" },
-  cardRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginTop: 6 },
+  cardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    marginTop: 6,
+  },
   cardRent: { fontSize: 18, fontWeight: "700", color: "#2F6B4F" },
   cardMeta: { fontSize: 14, color: "#4A514C" },
   empty: { textAlign: "center", color: "#5F6661", marginTop: 24 },
