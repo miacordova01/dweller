@@ -1,9 +1,10 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { HOUR, RateLimiter } from "@convex-dev/rate-limiter";
 import { ConvexError, v } from "convex/values";
 import OpenAI from "openai";
 import type { ResponseInputContent } from "openai/resources/responses/responses";
 
-import { internal } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
   action,
@@ -21,6 +22,24 @@ import {
 
 const SCREENSHOT_MODEL = "gpt-6.1-sol";
 const PAGE_MODEL = "gpt-6-luna";
+
+// Every import is a paid OpenAI call, so imports are capped before any fetch
+// or model call: per signed-in user, and across everyone for callers that
+// are not signed in (the app has no sign-in flow yet).
+const rateLimiter = new RateLimiter(components.rateLimiter, {
+  importPerUser: { kind: "token bucket", rate: 20, period: HOUR, capacity: 5 },
+  importAnonymous: {
+    kind: "token bucket",
+    rate: 60,
+    period: HOUR,
+    capacity: 10,
+  },
+});
+
+const UPLOAD_MAX_AGE_MS = HOUR;
+const PAGE_MAX_BYTES = 2_000_000;
+const PAGE_TIMEOUT_MS = 15_000;
+const MAX_REDIRECTS = 5;
 
 const importedSource = v.union(
   v.literal("instagram"),
@@ -159,44 +178,50 @@ export const importFromScreenshot = action({
   args: { storageId: v.id("_storage") },
   returns: v.id("listings"),
   handler: async (ctx, args): Promise<Id<"listings">> =>
-    await runImport(ctx, "extractListingFromScreenshot", args, async () => {
-      const blob = await ctx.storage.get(args.storageId);
-      if (blob === null) {
-        throw new ConvexError(
-          "The screenshot upload could not be found. Try choosing it again.",
-        );
-      }
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-      const mimeType = imageMimeType(bytes);
-      if (mimeType === null) {
-        throw new ConvexError(
-          "Dweller can read PNG, JPEG, WebP and GIF images. Take a screenshot of the post and share that instead.",
-        );
-      }
-      if (bytes.length > 20 * 1024 * 1024) {
-        throw new ConvexError(
-          "That image is larger than 20 MB. Share a screenshot instead.",
-        );
-      }
-      const extraction = await extract(SCREENSHOT_MODEL, [
-        {
-          type: "input_text",
-          text: "Extract the rental listing in this screenshot.",
-        },
-        {
-          type: "input_image",
-          image_url: `data:${mimeType};base64,${toBase64(bytes)}`,
-          detail: "high",
-        },
-      ]);
-      return {
-        extraction,
-        model: SCREENSHOT_MODEL,
-        source: extraction.platform,
-        photoStorageIds: [args.storageId],
-        photoUrls: [],
-      };
-    }),
+    await runImport(
+      ctx,
+      "extractListingFromScreenshot",
+      args,
+      args.storageId,
+      async () => {
+        const blob = await ctx.storage.get(args.storageId);
+        if (blob === null) {
+          throw new ConvexError(
+            "The screenshot upload could not be found. Try choosing it again.",
+          );
+        }
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const mimeType = imageMimeType(bytes);
+        if (mimeType === null) {
+          throw new ConvexError(
+            "Dweller can read PNG, JPEG, WebP and GIF images. Take a screenshot of the post and share that instead.",
+          );
+        }
+        if (bytes.length > 20 * 1024 * 1024) {
+          throw new ConvexError(
+            "That image is larger than 20 MB. Share a screenshot instead.",
+          );
+        }
+        const extraction = await extract(SCREENSHOT_MODEL, [
+          {
+            type: "input_text",
+            text: "Extract the rental listing in this screenshot.",
+          },
+          {
+            type: "input_image",
+            image_url: `data:${mimeType};base64,${toBase64(bytes)}`,
+            detail: "high",
+          },
+        ]);
+        return {
+          extraction,
+          model: SCREENSHOT_MODEL,
+          source: extraction.platform,
+          photoStorageIds: [args.storageId],
+          photoUrls: [],
+        };
+      },
+    ),
 });
 
 export const importFromUrl = action({
@@ -208,6 +233,7 @@ export const importFromUrl = action({
       ctx,
       "extractListingFromUrl",
       { url: url.href },
+      undefined,
       async () => {
         const html = await fetchPage(url);
         const extraction = await extract(PAGE_MODEL, [
@@ -308,7 +334,7 @@ export const discardImport = mutation({
   handler: async (ctx, { listingId }) => {
     const listing = await requireImportedDraft(ctx, listingId);
     for (const storageId of listing.photoStorageIds) {
-      await ctx.storage.delete(storageId);
+      await deleteUpload(ctx, storageId);
     }
     await ctx.db.delete("listings", listingId);
     return null;
@@ -362,10 +388,52 @@ export const saveDraft = internalMutation({
   },
 });
 
+// Runs before any fetch or model call: spends one unit of the import quota
+// and, for a screenshot, claims the upload so it backs only this import.
+export const beginImport = internalMutation({
+  args: { storageId: v.optional(v.id("_storage")) },
+  returns: v.null(),
+  handler: async (ctx, { storageId }) => {
+    const userId = await getAuthUserId(ctx);
+    const status = userId
+      ? await rateLimiter.limit(ctx, "importPerUser", { key: userId })
+      : await rateLimiter.limit(ctx, "importAnonymous");
+    if (!status.ok) {
+      const minutes = Math.max(1, Math.ceil(status.retryAfter / 60_000));
+      throw new ConvexError(
+        `You've imported a lot of listings in a short time. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+      );
+    }
+    if (storageId === undefined) return null;
+    const upload = await ctx.db.system.get("_storage", storageId);
+    const claimed = await ctx.db
+      .query("discoveryUploads")
+      .withIndex("by_storage", (q) => q.eq("storageId", storageId))
+      .unique();
+    if (
+      upload === null ||
+      claimed !== null ||
+      Date.now() - upload._creationTime > UPLOAD_MAX_AGE_MS
+    ) {
+      throw new ConvexError(
+        "That upload can't be used. Choose the screenshot again.",
+      );
+    }
+    await ctx.db.insert("discoveryUploads", { storageId });
+    return null;
+  },
+});
+
 export const recordFailure = internalMutation({
-  args: { tool: v.string(), toolArgs: v.any(), error: v.string() },
+  args: {
+    tool: v.string(),
+    toolArgs: v.any(),
+    error: v.string(),
+    storageId: v.optional(v.id("_storage")),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
+    if (args.storageId !== undefined) await deleteUpload(ctx, args.storageId);
     await ctx.db.insert("agentActions", {
       capability: "discovery",
       actorId: (await getAuthUserId(ctx)) ?? undefined,
@@ -392,8 +460,10 @@ async function runImport(
   ctx: ActionCtx,
   tool: string,
   toolArgs: Record<string, string>,
+  storageId: Id<"_storage"> | undefined,
   run: () => Promise<ImportResult>,
 ): Promise<Id<"listings">> {
+  await ctx.runMutation(internal.discovery.beginImport, { storageId });
   try {
     const result = await run();
     if (!result.extraction.isRentalListing) {
@@ -416,6 +486,7 @@ async function runImport(
       tool,
       toolArgs,
       error: message,
+      storageId,
     });
     throw new ConvexError(message);
   }
@@ -539,6 +610,16 @@ function toListingFields(x: Extraction) {
   };
 }
 
+async function deleteUpload(ctx: MutationCtx, storageId: Id<"_storage">) {
+  const claim = await ctx.db
+    .query("discoveryUploads")
+    .withIndex("by_storage", (q) => q.eq("storageId", storageId))
+    .unique();
+  if (claim === null) return;
+  await ctx.db.delete("discoveryUploads", claim._id);
+  await ctx.storage.delete(storageId);
+}
+
 async function requireImportedDraft(
   ctx: MutationCtx,
   listingId: Id<"listings">,
@@ -616,6 +697,26 @@ function rejectSocialHost(hostname: string) {
   }
 }
 
+function assertPublicUrl(url: URL) {
+  const hostname = url.hostname.toLowerCase();
+  if (
+    !["http:", "https:"].includes(url.protocol) ||
+    url.username !== "" ||
+    url.password !== "" ||
+    !hostname.includes(".") ||
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    /^[\d.]+$/.test(hostname) ||
+    /^0x/i.test(hostname) ||
+    hostname.startsWith("[")
+  ) {
+    throw new ConvexError("That doesn't look like a public listing page.");
+  }
+  rejectSocialHost(hostname);
+}
+
 function parseListingUrl(raw: string) {
   const trimmed = raw.trim();
   let url: URL;
@@ -628,55 +729,80 @@ function parseListingUrl(raw: string) {
       "That doesn't look like a link. Paste the full address of the listing.",
     );
   }
-  const hostname = url.hostname.toLowerCase();
-  if (
-    !["http:", "https:"].includes(url.protocol) ||
-    !hostname.includes(".") ||
-    hostname.endsWith(".local") ||
-    hostname.endsWith(".internal") ||
-    /^[\d.]+$/.test(hostname) ||
-    hostname.startsWith("[")
-  ) {
-    throw new ConvexError("That doesn't look like a public listing page.");
-  }
-  rejectSocialHost(hostname);
+  assertPublicUrl(url);
   return url;
 }
 
-async function fetchPage(url: URL) {
+// Follows redirects by hand so every hop passes assertPublicUrl, and keeps
+// one deadline and a byte cap over the whole download, body included.
+async function fetchPage(start: URL) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-  let response: Response;
+  const timeout = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS);
   try {
-    response = await fetch(url.href, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
-        accept: "text/html,application/xhtml+xml",
-      },
-    });
-  } catch {
+    let url = start;
+    for (let hop = 0; ; hop++) {
+      const response = await fetch(url.href, {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+          accept: "text/html,application/xhtml+xml",
+        },
+      });
+      const location = response.headers.get("location");
+      if (response.status >= 300 && response.status < 400 && location) {
+        await response.body?.cancel();
+        if (hop >= MAX_REDIRECTS) {
+          throw new ConvexError(
+            "That link redirects too many times. Share a screenshot instead.",
+          );
+        }
+        url = new URL(location, url);
+        assertPublicUrl(url);
+        continue;
+      }
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new ConvexError(
+          `That page answered with an error (${response.status}). Share a screenshot of the listing instead.`,
+        );
+      }
+      if (!(response.headers.get("content-type") ?? "").includes("html")) {
+        await response.body?.cancel();
+        throw new ConvexError(
+          "That link isn't a web page. Share a screenshot of the listing instead.",
+        );
+      }
+      return await readCapped(response);
+    }
+  } catch (error) {
+    if (error instanceof ConvexError) throw error;
     throw new ConvexError(
       "That page didn't load. Check the link, or share a screenshot instead.",
     );
   } finally {
     clearTimeout(timeout);
   }
-  rejectSocialHost(new URL(response.url || url.href).hostname.toLowerCase());
-  if (!response.ok) {
-    throw new ConvexError(
-      `That page answered with an error (${response.status}). Share a screenshot of the listing instead.`,
-    );
+}
+
+async function readCapped(response: Response) {
+  if (response.body === null) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let bytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    text += decoder.decode(value, { stream: true });
+    if (bytes >= PAGE_MAX_BYTES) {
+      await reader.cancel();
+      break;
+    }
   }
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("html")) {
-    throw new ConvexError(
-      "That link isn't a web page. Share a screenshot of the listing instead.",
-    );
-  }
-  return (await response.text()).slice(0, 2_000_000);
+  return text;
 }
 
 function decodeEntities(text: string) {
