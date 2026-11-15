@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { currentLandlord, currentRenter } from "./people";
+import schema from "./schema";
 
 export const TOUR_MINUTES = 30;
 
@@ -95,7 +96,8 @@ export const propose = mutation({
   returns: v.id("tours"),
   handler: async (ctx, args) => {
     const renter = await currentRenter(ctx);
-    if (renter === null) throw new ConvexError("Sign in as a renter to book a tour.");
+    if (renter === null)
+      throw new ConvexError("Sign in as a renter to book a tour.");
     const listing = await ctx.db.get("listings", args.listingId);
     if (listing === null || listing.status !== "active") {
       throw new ConvexError("That listing isn't available to tour.");
@@ -104,10 +106,18 @@ export const propose = mutation({
       throw new ConvexError("Pick a tour time in the future.");
     }
     const durationMinutes = args.durationMinutes ?? TOUR_MINUTES;
-    if (!Number.isInteger(durationMinutes) || durationMinutes <= 0 || durationMinutes > 240) {
+    if (
+      !Number.isInteger(durationMinutes) ||
+      durationMinutes <= 0 ||
+      durationMinutes > 240
+    ) {
       throw new ConvexError("durationMinutes must be between 1 and 240.");
     }
-    const { inquiryId, landlordId } = await inquiryFor(ctx, renter.userId, listing);
+    const { inquiryId, landlordId } = await inquiryFor(
+      ctx,
+      renter.userId,
+      listing,
+    );
     return await ctx.db.insert("tours", {
       inquiryId,
       listingId: listing._id,
@@ -127,7 +137,8 @@ export const confirm = mutation({
   returns: v.null(),
   handler: async (ctx, { tourId }) => {
     const landlord = await currentLandlord(ctx);
-    if (landlord === null) throw new ConvexError("Sign in as a landlord to confirm tours.");
+    if (landlord === null)
+      throw new ConvexError("Sign in as a landlord to confirm tours.");
     const tour = await decideTour(ctx, tourId, landlord.userId, "confirmed");
     await settleAgentProposal(ctx, tour, landlord.userId);
     return null;
@@ -139,7 +150,8 @@ export const decline = mutation({
   returns: v.null(),
   handler: async (ctx, { tourId }) => {
     const landlord = await currentLandlord(ctx);
-    if (landlord === null) throw new ConvexError("Sign in as a landlord to decline tours.");
+    if (landlord === null)
+      throw new ConvexError("Sign in as a landlord to decline tours.");
     const tour = await decideTour(ctx, tourId, landlord.userId, "declined");
     await settleAgentProposal(ctx, tour, landlord.userId);
     return null;
@@ -149,6 +161,16 @@ export const decline = mutation({
 // The current renter's tours with the listing they're for, soonest first.
 export const mine = query({
   args: {},
+  returns: v.array(
+    v.object({
+      ...schema.tables.tours.validator.fields,
+      _id: v.id("tours"),
+      _creationTime: v.number(),
+      address: v.string(),
+      neighborhood: v.union(v.string(), v.null()),
+      photoUrl: v.union(v.string(), v.null()),
+    }),
+  ),
   handler: async (ctx) => {
     const renter = await currentRenter(ctx);
     if (renter === null) return [];

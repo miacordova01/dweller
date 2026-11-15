@@ -86,6 +86,15 @@ export const saveDiscoverFilters = mutation({
 
 export const currentLease = query({
   args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      ...schema.tables.leases.validator.fields,
+      _id: v.id("leases"),
+      _creationTime: v.number(),
+      address: v.string(),
+    }),
+  ),
   handler: async (ctx) => {
     const renter = await currentRenter(ctx);
     if (renter === null) return null;

@@ -219,8 +219,9 @@ export default function Home() {
 
 function nextDue(now: number, day: number) {
   const d = new Date(now);
+  const today = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const due = new Date(d.getFullYear(), d.getMonth(), day);
-  if (due.getTime() < now) due.setMonth(due.getMonth() + 1);
+  if (due < today) due.setMonth(due.getMonth() + 1);
   return due.getTime();
 }
 

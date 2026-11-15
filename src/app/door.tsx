@@ -65,6 +65,10 @@ export default function DoorScreen() {
   const expand = useSharedValue(0);
 
   useEffect(() => {
+    if (reduceMotion && completed) enter();
+  }, [reduceMotion, completed, enter]);
+
+  useEffect(() => {
     const timer = setTimeout(() => setShowSkip(true), SKIP_DELAY_MS);
     return () => clearTimeout(timer);
   }, []);
@@ -127,7 +131,7 @@ export default function DoorScreen() {
     opacity: interpolate(expand.get(), [0.7, 1], [0, 1], "clamp"),
   }));
 
-  if (reduceMotion) return <Redirect href="/welcome" />;
+  if (reduceMotion) return completed ? null : <Redirect href="/welcome" />;
 
   return (
     <View style={styles.screen}>
