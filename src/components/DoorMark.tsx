@@ -8,14 +8,16 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 
-import { colors } from "@/theme";
+import { colors, withAlpha } from "@/theme";
 
 type DoorMarkProps = {
   size: number;
   strokeRatio?: number;
   knobRatio?: number;
   surface?: string;
+  leafColor?: string;
   openAngle?: number;
+  lit?: boolean;
   hinge?: SharedValue<number>;
   knobScale?: SharedValue<number>;
   scene?: ReactNode;
@@ -28,7 +30,9 @@ export function DoorMark({
   strokeRatio = 0.04,
   knobRatio = 0.075,
   surface = colors.white,
+  leafColor = colors.lavender,
   openAngle = 78,
+  lit = false,
   hinge,
   knobScale,
   scene,
@@ -41,6 +45,7 @@ export function DoorMark({
   const knob = Math.max(4, size * knobRatio);
   const innerHeight = height - stroke * 2;
   const innerWidth = width - stroke * 2;
+  const thickness = size * 0.045;
 
   const leafStyle = useAnimatedStyle(() => ({
     transform: [
@@ -49,12 +54,28 @@ export function DoorMark({
     ],
   }));
 
-  const panelStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      interpolate(hinge?.get() ?? 0, [0, 0.4], [0, 1], "clamp"),
-      [0, 1],
-      [surface, colors.lavender],
-    ),
+  const panelStyle = useAnimatedStyle(() => {
+    const open = hinge?.get() ?? 0;
+    return {
+      backgroundColor: interpolateColor(
+        interpolate(open, [0, 0.4], [0, 1], "clamp"),
+        [0, 1],
+        [surface, leafColor],
+      ),
+      shadowOpacity: lit ? interpolate(open, [0, 0.5], [0, 0.22], "clamp") : 0,
+    };
+  });
+
+  const edgeStyle = useAnimatedStyle(() => {
+    const angle = ((hinge?.get() ?? 0) * openAngle * Math.PI) / 180;
+    return {
+      opacity: angle > 0.02 ? 1 : 0,
+      transform: [{ translateX: Math.min(thickness * Math.tan(angle), innerWidth * 0.5) }],
+    };
+  });
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(hinge?.get() ?? 0, [0, 0.15, 1], [0, 0.6, 1], "clamp"),
   }));
 
   const knobStyle = useAnimatedStyle(() => ({
@@ -72,6 +93,19 @@ export function DoorMark({
 
   return (
     <View style={{ width, height }} pointerEvents="none">
+      {lit && (
+        <Animated.View
+          style={[
+            styles.absolute,
+            interior,
+            {
+              backgroundColor: colors.glow,
+              boxShadow: `0 0 ${size * 0.28}px ${size * 0.06}px ${withAlpha(colors.glow, 0.95)}`,
+            },
+            glowStyle,
+          ]}
+        />
+      )}
       {scene && (
         <Animated.View style={[styles.absolute, interior, styles.clip, sceneStyle]}>
           {scene}
@@ -88,12 +122,20 @@ export function DoorMark({
               borderTopRightRadius: height / 2,
               borderBottomRightRadius: height / 2,
             },
+            lit && styles.frameShadow,
           ]}
         />
         <Animated.View
           style={[StyleSheet.absoluteFill, { transformOrigin: "left center" }, leafStyle]}
         >
-          <Animated.View style={[styles.absolute, interior, panelStyle]}>
+          {lit && (
+            <Animated.View
+              style={[styles.absolute, interior, { backgroundColor: colors.leafEdge }, edgeStyle]}
+            />
+          )}
+          <Animated.View
+            style={[styles.absolute, interior, lit && styles.leafShadow, panelStyle]}
+          >
             <Animated.View
               style={[
                 styles.absolute,
@@ -107,7 +149,23 @@ export function DoorMark({
                 },
                 knobStyle,
               ]}
-            />
+            >
+              {lit && (
+                <View
+                  style={[
+                    styles.absolute,
+                    {
+                      width: knob * 0.36,
+                      height: knob * 0.36,
+                      borderRadius: knob,
+                      left: knob * 0.18,
+                      top: knob * 0.16,
+                      backgroundColor: withAlpha(colors.white, 0.7),
+                    },
+                  ]}
+                />
+              )}
+            </Animated.View>
           </Animated.View>
           <View
             style={[
@@ -124,4 +182,15 @@ export function DoorMark({
 const styles = StyleSheet.create({
   absolute: { position: "absolute" },
   clip: { overflow: "hidden" },
+  frameShadow: {
+    shadowColor: colors.ink,
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 12 },
+  },
+  leafShadow: {
+    shadowColor: colors.ink,
+    shadowRadius: 18,
+    shadowOffset: { width: 10, height: 14 },
+  },
 });
