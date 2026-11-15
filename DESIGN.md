@@ -58,19 +58,18 @@ decisions — change them here, in one place, if you disagree.
 
 ## 2. Typography
 
-Manrope throughout, via `@expo-google-fonts/manrope`.
+**Arial**, with bold for anything that carries weight. Use the platform font
+rather than bundling a webfont: `Arial` on iOS resolves to ArialMT and
+`Arial-BoldMT`; on Android it aliases to Roboto, which is the right fallback.
+Do not load Manrope — it was the earlier direction and has been replaced.
 
-| Role | Weight | Notes |
-|---|---|---|
-| Display / editorial headings | Medium (500) | Tighter letter spacing, `-0.02em` |
-| Headings | Semibold (600) | |
-| Body | Regular (400) | |
-| Buttons | Medium (500) | |
-| Prices | Semibold (600) | Tabular figures |
-
-The wordmark is thin, clean, modern. Never bold, never cartoonish.
-
----
+| Role | Weight |
+|---|---|
+| Slogan and display | Bold, tight letter spacing (`-0.02em`) |
+| Headings | Bold |
+| Body | Regular |
+| Buttons | Bold |
+| Prices | Bold, tabular figures |
 
 ## 3. The mark
 
@@ -87,8 +86,12 @@ the onboarding transition — but the full opening animation plays once.
 
 The first thing a new user sees. Mobile-first and **tap-triggered**.
 
-**Initial state:** white screen, large thin black D centred, purple doorknob
-inside it. Nothing else — no text, no buttons, no hint copy.
+**Initial state: the door is CLOSED.** A flat, thin ink D centred on a near
+white surface, with the purple knob inside it and the Dweller wordmark beneath.
+It must read as a clean logo, not as a door standing ajar. `reference.png`
+labels the four beats explicitly — *1 Logo appears, 2 Door animates open,
+3 Peek into home, 4 Transition to sign up* — and starting part-open destroys
+beat 1, which is the whole reveal.
 
 **On tap:**
 1. Doorknob responds to the touch first (scale down, spring back).
@@ -122,8 +125,8 @@ through the doorway and stays at 60fps.
 Reached when the door finishes opening.
 
 - **Top:** wordmark, centred, generous whitespace, subtle sky wash.
-- **Middle:** headline **"Find home. Feel at home."**, supporting line
-  *"Your next place, and everything after."* Optionally one residential
+- **Middle:** headline **"Dwell well."** in Arial Bold, supporting line
+  *"Your next place, and everything after."* directly beneath it. Optionally one residential
   photograph — keep it uncluttered.
 - **Bottom:** primary **Get started**, secondary **I already have an account**,
   then Continue with Apple / Google / email.
