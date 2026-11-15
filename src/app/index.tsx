@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { Image } from "expo-image";
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -217,9 +217,16 @@ function FindsEmpty({ onImport }: { onImport: () => void }) {
   );
 }
 
-function AddListingForm() {
+type ListingForm = typeof emptyForm;
+
+function AddListingForm({
+  form,
+  setForm,
+}: {
+  form: ListingForm;
+  setForm: Dispatch<SetStateAction<ListingForm>>;
+}) {
   const addListing = useMutation(api.listings.add);
-  const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -312,6 +319,7 @@ function AddListingForm() {
 export default function ListingsScreen() {
   const [feed, setFeed] = useState<Feed>("discover");
   const [importOpen, setImportOpen] = useState(false);
+  const [draft, setDraft] = useState(emptyForm);
   const discover = useQuery(api.listings.discover);
   const finds = useQuery(api.listings.myFinds);
   const listings = feed === "discover" ? discover : finds;
@@ -335,7 +343,9 @@ export default function ListingsScreen() {
           </View>
         }
         ListFooterComponent={
-          feed === "discover" ? <AddListingForm /> : undefined
+          feed === "discover" ? (
+            <AddListingForm form={draft} setForm={setDraft} />
+          ) : undefined
         }
         ListEmptyComponent={
           listings === undefined ? (
