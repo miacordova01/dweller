@@ -4,7 +4,21 @@ import { internalMutation, mutation, query } from "./_generated/server";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("listings").order("desc").collect();
+    const listings = await ctx.db
+      .query("listings")
+      .order("desc")
+      .filter((q) => q.neq(q.field("status"), "draft"))
+      .take(100);
+    return await Promise.all(
+      listings.map(async (listing) => {
+        const storageId = listing.photoStorageIds[0];
+        return {
+          ...listing,
+          photoUrl:
+            listing.photoUrls[0] ?? (storageId ? await ctx.storage.getUrl(storageId) : null),
+        };
+      }),
+    );
   },
 });
 

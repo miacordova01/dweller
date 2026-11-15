@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
+import { Image } from "expo-image";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -11,7 +12,17 @@ import {
 } from "react-native";
 
 import { api } from "../../convex/_generated/api";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { FunctionReturnType } from "convex/server";
+import { ImportSheet } from "../components/discovery/ImportSheet";
+import { AiMark } from "../components/discovery/AiMark";
+import {
+  formatBaths,
+  formatBeds,
+  formatRent,
+  parseDate,
+  sourceName,
+} from "../lib/listings";
+import { colors } from "../theme";
 
 const emptyForm = {
   title: "",
@@ -57,47 +68,89 @@ const fields: {
   },
 ];
 
-function formatBeds(bedrooms: number) {
-  if (bedrooms === 0) return "Studio";
-  return `${bedrooms} bed${bedrooms === 1 ? "" : "s"}`;
-}
+type FeedListing = FunctionReturnType<typeof api.listings.list>[number];
 
-function formatRent(cents: number) {
-  return (cents / 100).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  });
-}
-
-function parseDate(text: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
-  if (!match) return null;
-  const [year, month, day] = match.slice(1).map(Number);
-  const ms = Date.UTC(year, month - 1, day);
-  const date = new Date(ms);
-  return date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-    ? ms
-    : null;
-}
-
-function ListingCard({ listing }: { listing: Doc<"listings"> }) {
+function ListingCard({ listing }: { listing: FeedListing }) {
+  const imported = listing.source !== "dweller";
+  const missing = new Set(listing.missingFields);
+  const place = [listing.neighborhood, listing.city].filter(Boolean).join(", ");
   return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{listing.title}</Text>
-      <Text style={styles.cardNeighborhood}>{listing.neighborhood}</Text>
+    <View style={[styles.card, imported && styles.importedCard]}>
+      {imported && (
+        <View style={styles.sourceRow}>
+          <AiMark label={`Imported from ${sourceName(listing.source)}`} />
+          {missing.size > 0 && (
+            <Text style={styles.cardMissing}>
+              {missing.size} detail{missing.size === 1 ? "" : "s"} missing
+            </Text>
+          )}
+        </View>
+      )}
+      <View style={styles.cardBody}>
+        {imported && listing.photoUrl && (
+          <Image
+            source={{ uri: listing.photoUrl }}
+            style={styles.cardPhoto}
+            contentFit="cover"
+            contentPosition="top"
+          />
+        )}
+        <View style={styles.cardText}>
+          <Text style={styles.cardTitle}>{listing.title}</Text>
+          <Text style={styles.cardNeighborhood}>
+            {place || "Location unknown"}
+          </Text>
+        </View>
+      </View>
       <View style={styles.cardRow}>
-        <Text style={styles.cardRent}>
-          {formatRent(listing.rentMonthlyCents)}/mo
+        <Text
+          style={[
+            styles.cardRent,
+            missing.has("rentMonthlyCents") && styles.cardUnknown,
+          ]}
+        >
+          {missing.has("rentMonthlyCents")
+            ? "Rent unknown"
+            : `${formatRent(listing.rentMonthlyCents)}/mo`}
         </Text>
         <Text style={styles.cardMeta}>
-          {formatBeds(listing.bedrooms)} · {listing.bathrooms} bath
-          {listing.bathrooms === 1 ? "" : "s"}
+          {[
+            missing.has("bedrooms") ? null : formatBeds(listing.bedrooms),
+            missing.has("bathrooms") ? null : formatBaths(listing.bathrooms),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </Text>
       </View>
     </View>
+  );
+}
+
+function ImportEntry() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable
+        testID="open-import"
+        accessibilityRole="button"
+        accessibilityLabel="Add from link or screenshot"
+        style={({ pressed }) => [
+          styles.importEntry,
+          pressed && styles.buttonPressed,
+        ]}
+        onPress={() => setOpen(true)}
+      >
+        <AiMark size="large" />
+        <View style={styles.cardText}>
+          <Text style={styles.importTitle}>Add from link or screenshot</Text>
+          <Text style={styles.importSubtitle}>
+            Turn an Instagram, TikTok or Craigslist post into a listing card
+          </Text>
+        </View>
+        <Text style={styles.importChevron}>›</Text>
+      </Pressable>
+      <ImportSheet visible={open} onClose={() => setOpen(false)} />
+    </>
   );
 }
 
@@ -165,7 +218,7 @@ function AddListingForm() {
             style={styles.input}
             value={form[f.key]}
             placeholder={f.placeholder}
-            placeholderTextColor="#9AA0A6"
+            placeholderTextColor={colors.inkMuted}
             keyboardType={f.numeric ? "decimal-pad" : "default"}
             autoCapitalize={f.key === "photoUrl" ? "none" : "sentences"}
             onChangeText={(text) =>
@@ -202,7 +255,12 @@ export default function ListingsScreen() {
       data={listings ?? []}
       keyExtractor={(item) => item._id}
       renderItem={({ item }) => <ListingCard listing={item} />}
-      ListHeaderComponent={<AddListingForm />}
+      ListHeaderComponent={
+        <>
+          <ImportEntry />
+          <AddListingForm />
+        </>
+      }
       ListEmptyComponent={
         listings === undefined ? (
           <ActivityIndicator style={styles.empty} />
@@ -223,57 +281,95 @@ export default function ListingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F6F5F2" },
+  screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: 16, paddingBottom: 48, gap: 12 },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    color: "#1F2421",
+    fontWeight: "600",
+    color: colors.ink,
+    letterSpacing: -0.4,
     marginTop: 8,
   },
   form: { gap: 10 },
   field: { gap: 4 },
-  label: { fontSize: 13, fontWeight: "600", color: "#4A514C" },
+  label: { fontSize: 13, fontWeight: "500", color: colors.inkMuted },
   input: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#C9CCC5",
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.hairline,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: "#1F2421",
+    color: colors.ink,
   },
-  error: { color: "#B3261E", fontSize: 14 },
+  error: { color: colors.error, fontSize: 14 },
   button: {
-    backgroundColor: "#2F6B4F",
-    borderRadius: 10,
+    backgroundColor: colors.primary,
+    borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 4,
   },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
+  buttonText: { color: colors.white, fontSize: 16, fontWeight: "500" },
+  importEntry: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    padding: 16,
+    marginBottom: 8,
+  },
+  importTitle: { fontSize: 16, fontWeight: "600", color: colors.ink },
+  importSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.inkMuted,
+    marginTop: 2,
+  },
+  importChevron: { fontSize: 24, color: colors.inkMuted },
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: colors.white,
+    borderRadius: 16,
     padding: 16,
     gap: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
-  cardTitle: { fontSize: 17, fontWeight: "600", color: "#1F2421" },
-  cardNeighborhood: { fontSize: 14, color: "#5F6661" },
+  importedCard: { borderStyle: "dashed", borderColor: colors.primary, gap: 10 },
+  sourceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardBody: { flexDirection: "row", gap: 12, alignItems: "center" },
+  cardPhoto: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    backgroundColor: colors.canvas,
+  },
+  cardText: { flex: 1, gap: 2 },
+  cardTitle: { fontSize: 17, fontWeight: "600", color: colors.ink },
+  cardNeighborhood: { fontSize: 14, color: colors.inkMuted },
+  cardMissing: { fontSize: 12, color: colors.inkMuted },
   cardRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
     marginTop: 6,
   },
-  cardRent: { fontSize: 18, fontWeight: "700", color: "#2F6B4F" },
-  cardMeta: { fontSize: 14, color: "#4A514C" },
-  empty: { textAlign: "center", color: "#5F6661", marginTop: 24 },
+  cardRent: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.ink,
+    fontVariant: ["tabular-nums"],
+  },
+  cardUnknown: { fontSize: 15, fontWeight: "500", color: colors.inkMuted },
+  cardMeta: { fontSize: 14, color: colors.inkMuted },
+  empty: { textAlign: "center", color: colors.inkMuted, marginTop: 24 },
 });
