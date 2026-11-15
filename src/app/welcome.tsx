@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Alert, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -20,6 +20,10 @@ import { colors, radius, space, type } from "@/theme";
 
 const SHEET_OVERLAP = 28;
 
+function signInUnavailable() {
+  Alert.alert("Demo build", "Accounts aren't switched on in this demo yet. Tap Get started to try Dweller.");
+}
+
 const rise = (index: number) => FadeInUp.delay(420 + index * 60).duration(420);
 
 function ProviderButton({ label, children }: { label: string; children: ReactNode }) {
@@ -30,7 +34,7 @@ function ProviderButton({ label, children }: { label: string; children: ReactNod
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
-        accessibilityHint="Coming soon"
+        onPress={signInUnavailable}
         onPressIn={() => pressed.set(withTiming(1, { duration: 90 }))}
         onPressOut={() => pressed.set(withTiming(0, { duration: 160 }))}
         style={({ pressed: isPressed }) => [styles.provider, isPressed && styles.providerPressed]}
@@ -98,7 +102,7 @@ export default function WelcomeScreen() {
             testID="have-account"
             label="I already have an account"
             variant="secondary"
-            accessibilityHint="Sign in is coming soon"
+            onPress={signInUnavailable}
           />
         </Animated.View>
         <Animated.View entering={rise(2)} style={styles.providers}>
@@ -121,7 +125,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   wordmark: { alignItems: "center" },
   headline: { paddingHorizontal: space.xl, marginTop: space.xxl },
-  display: { ...type.display, fontSize: 40, lineHeight: 44, letterSpacing: 40 * -0.02 },
+  display: { ...type.display, fontSize: 36, lineHeight: 40, letterSpacing: 36 * -0.02 },
   support: { marginTop: space.sm, fontSize: 18, lineHeight: 26 },
   photo: { flex: 1, marginTop: space.lg, marginBottom: -SHEET_OVERLAP, overflow: "hidden" },
   arc: { position: "absolute", top: -1, left: 0 },
