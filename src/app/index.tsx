@@ -22,7 +22,9 @@ import {
   parseDate,
   sourceName,
 } from "../lib/listings";
-import { colors, fonts } from "@/theme";
+import { Button } from "../components/Button";
+import { DoorMark } from "../components/DoorMark";
+import { colors, fonts, radius, space, type } from "@/theme";
 
 const emptyForm = {
   title: "",
@@ -68,7 +70,53 @@ const fields: {
   },
 ];
 
-type FeedListing = FunctionReturnType<typeof api.listings.list>[number];
+type FeedListing = FunctionReturnType<typeof api.listings.discover>[number];
+
+type Feed = "discover" | "finds";
+
+const feeds: { key: Feed; label: string }[] = [
+  { key: "discover", label: "Discover" },
+  { key: "finds", label: "My finds" },
+];
+
+function FeedSwitch({
+  value,
+  onChange,
+}: {
+  value: Feed;
+  onChange: (feed: Feed) => void;
+}) {
+  return (
+    <View style={styles.segmented} accessibilityRole="tablist">
+      {feeds.map((feed) => {
+        const selected = feed.key === value;
+        return (
+          <Pressable
+            key={feed.key}
+            testID={`feed-${feed.key}`}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            style={({ pressed }) => [
+              styles.segment,
+              selected && styles.segmentSelected,
+              pressed && !selected && styles.segmentPressed,
+            ]}
+            onPress={() => onChange(feed.key)}
+          >
+            <Text
+              style={[
+                styles.segmentLabel,
+                selected && styles.segmentLabelSelected,
+              ]}
+            >
+              {feed.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
 function ListingCard({ listing }: { listing: FeedListing }) {
   const imported = listing.source !== "dweller";
@@ -126,31 +174,46 @@ function ListingCard({ listing }: { listing: FeedListing }) {
   );
 }
 
-function ImportEntry() {
-  const [open, setOpen] = useState(false);
+function ImportEntry({ onPress }: { onPress: () => void }) {
   return (
-    <>
-      <Pressable
-        testID="open-import"
-        accessibilityRole="button"
-        accessibilityLabel="Add from link or screenshot"
-        style={({ pressed }) => [
-          styles.importEntry,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={() => setOpen(true)}
-      >
-        <AiMark size="large" />
-        <View style={styles.cardText}>
-          <Text style={styles.importTitle}>Add from link or screenshot</Text>
-          <Text style={styles.importSubtitle}>
-            Turn an Instagram, TikTok or Craigslist post into a listing card
-          </Text>
-        </View>
-        <Text style={styles.importChevron}>›</Text>
-      </Pressable>
-      <ImportSheet visible={open} onClose={() => setOpen(false)} />
-    </>
+    <Pressable
+      testID="open-import"
+      accessibilityRole="button"
+      accessibilityLabel="Add from link or screenshot"
+      style={({ pressed }) => [
+        styles.importEntry,
+        pressed && styles.buttonPressed,
+      ]}
+      onPress={onPress}
+    >
+      <AiMark size="large" />
+      <View style={styles.cardText}>
+        <Text style={styles.importTitle}>Add from link or screenshot</Text>
+        <Text style={styles.importSubtitle}>
+          Turn an Instagram, TikTok or Craigslist post into a listing card
+        </Text>
+      </View>
+      <Text style={styles.importChevron}>›</Text>
+    </Pressable>
+  );
+}
+
+function FindsEmpty({ onImport }: { onImport: () => void }) {
+  return (
+    <View style={styles.findsEmpty}>
+      <DoorMark size={56} />
+      <Text style={styles.findsEmptyTitle}>No finds yet</Text>
+      <Text style={styles.findsEmptyBody}>
+        This is where listings you bring in from Instagram, TikTok or a link
+        will appear.
+      </Text>
+      <Button
+        testID="empty-import"
+        label="Import a listing"
+        icon={<AiMark />}
+        onPress={onImport}
+      />
+    </View>
   );
 }
 
@@ -242,41 +305,58 @@ function AddListingForm() {
           {saving ? "Saving..." : "Add listing"}
         </Text>
       </Pressable>
-      <Text style={styles.sectionTitle}>Available now</Text>
     </View>
   );
 }
 
 export default function ListingsScreen() {
-  const listings = useQuery(api.listings.list);
+  const [feed, setFeed] = useState<Feed>("discover");
+  const [importOpen, setImportOpen] = useState(false);
+  const discover = useQuery(api.listings.discover);
+  const finds = useQuery(api.listings.myFinds);
+  const listings = feed === "discover" ? discover : finds;
+  const openImport = () => setImportOpen(true);
 
   return (
-    <FlatList
-      data={listings ?? []}
-      keyExtractor={(item) => item._id}
-      renderItem={({ item }) => <ListingCard listing={item} />}
-      ListHeaderComponent={
-        <>
-          <ImportEntry />
-          <AddListingForm />
-        </>
-      }
-      ListEmptyComponent={
-        listings === undefined ? (
-          <ActivityIndicator style={styles.empty} />
-        ) : (
-          <Text style={styles.empty}>
-            No listings yet. Add the first one above.
-          </Text>
-        )
-      }
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-      automaticallyAdjustKeyboardInsets
-      keyboardDismissMode="on-drag"
-      keyboardShouldPersistTaps="handled"
-    />
+    <View style={styles.screen}>
+      <FlatList
+        key={feed}
+        data={listings ?? []}
+        keyExtractor={(item) => item._id}
+        renderItem={({ item }) => <ListingCard listing={item} />}
+        ListHeaderComponent={
+          <View style={styles.listHeader}>
+            <FeedSwitch value={feed} onChange={setFeed} />
+            {feed === "discover" ? (
+              <Text style={styles.sectionTitle}>Available now</Text>
+            ) : finds?.length ? (
+              <ImportEntry onPress={openImport} />
+            ) : null}
+          </View>
+        }
+        ListFooterComponent={
+          feed === "discover" ? <AddListingForm /> : undefined
+        }
+        ListEmptyComponent={
+          listings === undefined ? (
+            <ActivityIndicator style={styles.empty} />
+          ) : feed === "discover" ? (
+            <Text style={styles.empty}>
+              No listings yet. Add the first one below.
+            </Text>
+          ) : (
+            <FindsEmpty onImport={openImport} />
+          )
+        }
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustKeyboardInsets
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+      />
+      <ImportSheet visible={importOpen} onClose={() => setImportOpen(false)} />
+    </View>
   );
 }
 
@@ -290,7 +370,40 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     marginTop: 8,
   },
-  form: { gap: 10 },
+  listHeader: { gap: space.md },
+  segmented: {
+    flexDirection: "row",
+    backgroundColor: colors.lavender,
+    borderRadius: radius.pill,
+    padding: space.xs,
+  },
+  segment: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+  },
+  segmentSelected: {
+    backgroundColor: colors.white,
+    shadowColor: colors.ink,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  segmentPressed: { opacity: 0.7 },
+  segmentLabel: { ...type.button, fontSize: 15, color: colors.inkMuted },
+  segmentLabelSelected: { color: colors.ink },
+  findsEmpty: {
+    alignItems: "center",
+    gap: space.md,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.xxxl,
+  },
+  findsEmptyTitle: { ...type.heading, marginTop: space.sm },
+  findsEmptyBody: { ...type.bodyMuted, textAlign: "center" },
+  form: { gap: 10, marginTop: space.xl },
   field: { gap: 4 },
   label: { fontSize: 13, fontFamily: fonts.medium, color: colors.inkMuted },
   input: {
