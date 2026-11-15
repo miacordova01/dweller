@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, usePathname } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Image } from "expo-image";
 import type { ReactNode, Ref } from "react";
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BellButton as Bell } from "@/components/BellButton";
 import { EmptyState } from "@/components/EmptyState";
 import { colors, fonts, radius, shadow, space, type, withAlpha } from "@/theme";
+import { Screen } from "@/components/DwellerUI";
 
 export { Chip } from "@/components/Chip";
 export { EmptyState } from "@/components/EmptyState";
@@ -26,6 +27,16 @@ export { formatDay, formatWhen, timeAgo } from "@/lib/time";
 
 export type Symbol = SymbolViewProps["name"];
 
+const landlordTabFor: Record<string, string> = {
+  "/landlord/overview": "Overview",
+  "/landlord/properties": "Properties",
+  "/landlord/inbox": "Inbox",
+  "/landlord/activity": "Activity",
+};
+
+// Landlord screens live in the same chrome as the renter side: the content
+// region scrolls and ends at the top of the landlord tab bar. A route that
+// isn't a tab root (approvals) is a pushed screen.
 export function LandlordScreen({
   children,
   scrollRef,
@@ -34,17 +45,21 @@ export function LandlordScreen({
   scrollRef?: Ref<ScrollViewInstance>;
 }) {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const tab = landlordTabFor[pathname];
   return (
-    <ScrollView
+    <Screen bare landlord pushed={tab === undefined} tab={tab ?? "Overview"}>
+      <ScrollView
         ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.xxxl },
+          { paddingTop: insets.top + space.md, paddingBottom: space.xxl },
         ]}
       >
         {children}
       </ScrollView>
+    </Screen>
   );
 }
 
@@ -52,14 +67,16 @@ export function ScreenHeader({
   title,
   subtitle,
   right,
+  back = false,
 }: {
+  back?: boolean;
   title: string;
   subtitle?: string;
   right?: ReactNode;
 }) {
   return (
     <View style={styles.header}>
-      {router.canGoBack() && (
+      {back && (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back"
@@ -68,7 +85,11 @@ export function ScreenHeader({
           style={styles.back}
         >
           <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back", web: "arrow_back" }}
+            name={{
+              ios: "chevron.left",
+              android: "arrow_back",
+              web: "arrow_back",
+            }}
             size={20}
             tintColor={colors.ink}
           />
@@ -89,7 +110,9 @@ export function BellButton({ count }: { count: number }) {
   return (
     <Bell
       unread={count > 0}
-      accessibilityLabel={count > 0 ? count + " approvals waiting" : "Approvals"}
+      accessibilityLabel={
+        count > 0 ? count + " approvals waiting" : "Approvals"
+      }
       onPress={() => router.push("/landlord/approvals")}
     />
   );
@@ -119,7 +142,13 @@ export function Card({
   );
 }
 
-export function SectionHeading({ title, right }: { title: string; right?: ReactNode }) {
+export function SectionHeading({
+  title,
+  right,
+}: {
+  title: string;
+  right?: ReactNode;
+}) {
   return (
     <View style={styles.sectionRow}>
       <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -139,11 +168,22 @@ export function AgentChip({ label }: { label: string }) {
   );
 }
 
-export function Thumb({ uri, size = 64 }: { uri: string | null | undefined; size?: number }) {
+export function Thumb({
+  uri,
+  size = 64,
+}: {
+  uri: string | null | undefined;
+  size?: number;
+}) {
   return (
     <Image
       source={uri ? { uri } : undefined}
-      style={{ width: size, height: size, borderRadius: radius.sm, backgroundColor: colors.lavender }}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius.sm,
+        backgroundColor: colors.lavender,
+      }}
       contentFit="cover"
       accessibilityIgnoresInvertColors
     />
@@ -153,7 +193,11 @@ export function Thumb({ uri, size = 64 }: { uri: string | null | undefined; size
 export function Chevron() {
   return (
     <SymbolView
-      name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" }}
+      name={{
+        ios: "chevron.right",
+        android: "chevron_right",
+        web: "chevron_right",
+      }}
       size={14}
       tintColor={colors.inkMuted}
     />
@@ -196,7 +240,14 @@ export function ActionButton({
         (pressed || disabled) && styles.pressed,
       ]}
     >
-      <Text style={[type.button, { color: variant === "primary" ? colors.white : colors.ink }]}>{label}</Text>
+      <Text
+        style={[
+          type.button,
+          { color: variant === "primary" ? colors.white : colors.ink },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -214,14 +265,28 @@ export function NoLandlord() {
   );
 }
 
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { paddingHorizontal: 20, gap: space.lg },
   header: { gap: space.xs, marginBottom: space.sm },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  back: { width: 32, height: 32, justifyContent: "center", marginBottom: space.xs },
-  card: { backgroundColor: colors.white, borderRadius: radius.card, padding: space.lg, gap: space.sm, boxShadow: shadow.card },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  back: {
+    width: 32,
+    height: 32,
+    justifyContent: "center",
+    marginBottom: space.xs,
+  },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: radius.card,
+    padding: space.lg,
+    gap: space.sm,
+    boxShadow: shadow.card,
+  },
   pressed: { opacity: 0.7 },
   sectionRow: {
     flexDirection: "row",

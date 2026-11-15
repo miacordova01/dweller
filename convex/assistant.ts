@@ -697,6 +697,17 @@ function pickSlot(
   return null;
 }
 
+// "2026-11-21T09:00" reads as "Sat, Nov 21 around 9:00 AM"; free text stays as written.
+function describeWhen(preferredWhen: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(preferredWhen.trim());
+  if (!match) return preferredWhen;
+  const date = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3], match[4] ? +match[4] : 12, match[5] ? +match[5] : 0));
+  const day = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  if (!match[4]) return day;
+  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" });
+  return `${day} around ${time}`;
+}
+
 export const bookTour = internalMutation({
   args: {
     conversationId: v.id("conversations"),
@@ -772,7 +783,7 @@ export const bookTour = internalMutation({
         scheduledFor: picked.slot,
         durationMinutes: TOUR_MINUTES,
         preferredWhen: args.preferredWhen,
-        reason: `${renter?.displayName ?? "The renter"} asked for ${args.preferredWhen}. ${when} is the first open slot in your showing hours from then and doesn't overlap another tour.`,
+        reason: `${renter?.displayName ?? "The renter"} asked for ${describeWhen(args.preferredWhen)}. ${when} is the first open slot in your showing hours from then and doesn't overlap another tour.`,
       },
       requiresApproval: true,
       status: "proposed",

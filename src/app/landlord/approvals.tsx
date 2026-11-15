@@ -2,9 +2,14 @@ import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from "react-native-reanimated";
 
 import { api } from "../../../convex/_generated/api";
+import { C, Glyph, Panel, Pill, T } from "@/components/DwellerUI";
 import {
   ActionButton,
   AgentChip,
@@ -18,10 +23,55 @@ import {
   Thumb,
   timeAgo,
 } from "@/features/landlord/ui";
-import { agentNames, describe, type Approval } from "@/features/landlord/describe";
+import {
+  agentNames,
+  describe,
+  type Approval,
+} from "@/features/landlord/describe";
 import { colors, fonts, radius, space, type } from "@/theme";
 
-function ApprovalCard({ item }: { item: Approval }) {
+type Decided = { item: Approval; approved: boolean };
+
+const outcome: Partial<Record<Approval["kind"], [string, string]>> = {
+  bookTour: ["Tour confirmed", "Tour declined"],
+  acceptVendorQuote: ["Repair booked", "Quote declined"],
+  sendRentReminder: ["Reminder sent", "Reminder not sent"],
+};
+
+function DecidedRow({ decided }: { decided: Decided }) {
+  const { headline } = describe(decided.item);
+  const [yes, no] = outcome[decided.item.kind] ?? ["Approved", "Declined"];
+  return (
+    <Animated.View entering={FadeIn.duration(220)} layout={LinearTransition}>
+      <Panel>
+        <View style={styles.decided}>
+          <Glyph
+            name={
+              decided.approved ? "checkmark.circle.fill" : "xmark.circle.fill"
+            }
+            size={22}
+            color={decided.approved ? C.success : C.muted}
+          />
+          <Text style={[T.body, styles.decidedText]} numberOfLines={2}>
+            {headline}
+          </Text>
+          <Pill
+            tone={decided.approved ? "mint" : "lavender"}
+            label={decided.approved ? yes : no}
+          />
+        </View>
+      </Panel>
+    </Animated.View>
+  );
+}
+
+function ApprovalCard({
+  item,
+  onDecided,
+}: {
+  item: Approval;
+  onDecided: (decided: Decided) => void;
+}) {
   const approve = useMutation(api.landlord.approve);
   const decline = useMutation(api.landlord.decline);
   const [busy, setBusy] = useState(false);
@@ -33,8 +83,13 @@ function ApprovalCard({ item }: { item: Approval }) {
     setError(null);
     try {
       await run({ actionId: item._id });
+      onDecided({ item, approved: run === approve });
     } catch (e) {
-      setError(e instanceof ConvexError ? String(e.data) : "Couldn't save that. Try again.");
+      setError(
+        e instanceof ConvexError
+          ? String(e.data)
+          : "Couldn't save that. Try again.",
+      );
       setBusy(false);
     }
   }
@@ -59,12 +114,17 @@ function ApprovalCard({ item }: { item: Approval }) {
                 {ticket ? ticket.title : item.listing.address}
               </Text>
               <Text style={type.caption} numberOfLines={1}>
-                {ticket ? item.listing.address + " · reported by " + ticket.tenantName : item.listing.neighborhood}
+                {ticket
+                  ? item.listing.address + " · reported by " + ticket.tenantName
+                  : item.listing.neighborhood}
               </Text>
             </View>
-            {ticket && (ticket.urgency === "high" || ticket.urgency === "emergency") && (
-              <Chip label={ticket.urgency === "high" ? "High" : "Emergency"} />
-            )}
+            {ticket &&
+              (ticket.urgency === "high" || ticket.urgency === "emergency") && (
+                <Chip
+                  label={ticket.urgency === "high" ? "High" : "Emergency"}
+                />
+              )}
           </View>
         )}
 
@@ -84,8 +144,18 @@ function ApprovalCard({ item }: { item: Approval }) {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <View style={styles.buttons}>
-          <ActionButton label="Decline" variant="secondary" disabled={busy} onPress={() => decide(decline)} />
-          <ActionButton label="Approve" variant="primary" disabled={busy} onPress={() => decide(approve)} />
+          <ActionButton
+            label="Decline"
+            variant="secondary"
+            disabled={busy}
+            onPress={() => decide(decline)}
+          />
+          <ActionButton
+            label="Approve"
+            variant="primary"
+            disabled={busy}
+            onPress={() => decide(approve)}
+          />
         </View>
       </Card>
     </Animated.View>
@@ -94,6 +164,8 @@ function ApprovalCard({ item }: { item: Approval }) {
 
 export default function LandlordApprovals() {
   const items = useQuery(api.landlord.approvals);
+  const [decided, setDecided] = useState<Decided[]>([]);
+  const record = (d: Decided) => setDecided((prev) => [d, ...prev]);
 
   if (items === undefined) {
     return (
@@ -113,10 +185,23 @@ export default function LandlordApprovals() {
   return (
     <LandlordScreen>
       <ScreenHeader
+        back
         title="Approvals"
         subtitle="Your agents prepared these. Nothing happens until you decide."
-        right={items.length > 0 ? <Chip tone="lavender" label={items.length + " waiting"} /> : undefined}
+        right={
+          items.length > 0 ? (
+            <Chip tone="lavender" label={items.length + " waiting"} />
+          ) : undefined
+        }
       />
+      {decided.length > 0 && (
+        <View style={styles.decidedList}>
+          <Text style={T.label}>Just decided</Text>
+          {decided.map((d) => (
+            <DecidedRow key={d.item._id} decided={d} />
+          ))}
+        </View>
+      )}
       {items.length === 0 ? (
         <Animated.View layout={LinearTransition}>
           <EmptyState
@@ -125,16 +210,27 @@ export default function LandlordApprovals() {
           />
         </Animated.View>
       ) : (
-        items.map((item) => <ApprovalCard key={item._id} item={item} />)
+        items.map((item) => (
+          <ApprovalCard key={item._id} item={item} onDecided={record} />
+        ))
       )}
     </LandlordScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   headline: { ...type.heading, marginTop: space.xs },
-  detail: { ...type.body, fontSize: 15, lineHeight: 20, color: colors.inkMuted },
+  detail: {
+    ...type.body,
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.inkMuted,
+  },
   context: {
     flexDirection: "row",
     alignItems: "center",
@@ -152,7 +248,12 @@ const styles = StyleSheet.create({
     paddingLeft: space.md,
     paddingVertical: 2,
   },
-  quoteText: { ...fonts.regular, fontSize: 15, lineHeight: 22, color: colors.ink },
+  quoteText: {
+    ...fonts.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.ink,
+  },
   reason: {
     flexDirection: "row",
     gap: space.sm,
@@ -160,8 +261,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: space.md,
   },
-  sparkle: { ...fonts.regular, fontSize: 13, lineHeight: 20, color: colors.primary },
-  reasonText: { flex: 1, ...fonts.regular, fontSize: 14, lineHeight: 20, color: colors.ink },
+  sparkle: {
+    ...fonts.regular,
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.primary,
+  },
+  reasonText: {
+    flex: 1,
+    ...fonts.regular,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.ink,
+  },
   error: { ...fonts.regular, fontSize: 14, color: colors.error },
+  decidedList: { gap: space.sm },
+  decided: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  decidedText: { flex: 1 },
   buttons: { flexDirection: "row", gap: space.md, marginTop: space.sm },
 });
