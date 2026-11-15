@@ -11,6 +11,7 @@ import { Icon } from "@/components/Icon";
 import { InAppButton } from "@/components/InAppButton";
 import { ListingCard } from "@/components/ListingCard";
 import { ScreenTitle } from "@/components/ScreenTitle";
+import { useSavedListings } from "@/lib/saved";
 import { colors, radius, shadow, space, type } from "@/theme";
 
 function ImportEntry({ onPress }: { onPress: () => void }) {
@@ -36,6 +37,7 @@ export default function Saved() {
   const insets = useSafeAreaInsets();
   const finds = useQuery(api.listings.myFinds);
   const [importOpen, setImportOpen] = useState(false);
+  const { isSaved, toggle } = useSavedListings();
   const [now] = useState(() => Date.now());
   const openImport = () => setImportOpen(true);
 
@@ -45,7 +47,9 @@ export default function Saved() {
         testID="saved-feed"
         data={finds ?? []}
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <ListingCard listing={item} now={now} saved />}
+        renderItem={({ item }) => (
+          <ListingCard listing={item} now={now} saved={isSaved(item._id)} onToggleSave={() => toggle(item._id)} />
+        )}
         ListHeaderComponent={
           <View style={styles.header}>
             <ScreenTitle title="Saved" subtitle="Homes you found anywhere, side by side with Dweller listings." />

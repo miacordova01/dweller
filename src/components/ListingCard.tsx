@@ -1,46 +1,34 @@
 import type { FunctionReturnType } from "convex/server";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { api } from "../../convex/_generated/api";
-import { Chip } from "@/components/Chip";
 import { AiMark } from "@/components/discovery/AiMark";
-import { Icon } from "@/components/Icon";
+import { C, Glyph, Pill, T } from "@/components/DwellerUI";
 import { availability, listingMeta, listingPlace, listingRent, sourceName } from "@/lib/listings";
-import { colors, fonts, radius, shadow, space, type } from "@/theme";
 
 export type FeedListing = FunctionReturnType<typeof api.listings.discover>[number];
 
-function SaveButton({ initiallySaved }: { initiallySaved: boolean }) {
-  const [saved, setSaved] = useState(initiallySaved);
+export function SaveHeart({ saved, onToggle, size = 34 }: { saved: boolean; onToggle: () => void; size?: number }) {
   const scale = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
-
   return (
     <Pressable
+      testID="save-heart"
       onPress={() => {
-        setSaved((value) => !value);
-        scale.set(withSequence(withTiming(1.2, { duration: 90 }), withSpring(1, { dampingRatio: 0.5, duration: 350 })));
+        onToggle();
+        scale.set(withSequence(withTiming(1.22, { duration: 100 }), withSpring(1, { dampingRatio: 0.55, duration: 300 })));
       }}
       hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={saved ? "Remove from saved" : "Save"}
       accessibilityState={{ selected: saved }}
-      style={styles.heart}
+      style={[styles.heart, { width: size, height: size, borderRadius: size / 2 }]}
     >
       <Animated.View style={style}>
-        <Icon
-          name={
-            saved
-              ? { ios: "heart.fill", android: "favorite", web: "favorite" }
-              : { ios: "heart", android: "favorite_border", web: "favorite_border" }
-          }
-          size={18}
-          color={saved ? colors.primary : colors.ink}
-        />
+        <Glyph name={saved ? "heart.fill" : "heart"} size={size * 0.5} color={saved ? C.purple : C.ink} />
       </Animated.View>
     </Pressable>
   );
@@ -49,11 +37,13 @@ function SaveButton({ initiallySaved }: { initiallySaved: boolean }) {
 export function ListingCard({
   listing,
   now,
-  saved = false,
+  saved,
+  onToggleSave,
 }: {
   listing: FeedListing;
   now: number;
-  saved?: boolean;
+  saved: boolean;
+  onToggleSave: () => void;
 }) {
   const rent = listingRent(listing);
   const meta = listingMeta(listing);
@@ -73,27 +63,29 @@ export function ListingCard({
         {listing.photoUrl ? (
           <Image source={{ uri: listing.photoUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
         ) : (
-          <Icon name={{ ios: "photo", android: "image", web: "image" }} size={28} color={colors.inkMuted} />
+          <Glyph name="photo" size={28} color={C.muted} />
         )}
-        <SaveButton initiallySaved={saved} />
+        <View style={styles.heartSlot}>
+          <SaveHeart saved={saved} onToggle={onToggleSave} />
+        </View>
       </View>
       <View style={styles.body}>
         <Text style={[styles.price, rent === "Rent unknown" && styles.unknown]}>{rent}</Text>
         {meta ? <Text style={styles.meta}>{meta}</Text> : null}
         <View style={styles.bottomRow}>
           <View style={styles.place}>
-            <Icon name={{ ios: "mappin.and.ellipse", android: "location_on", web: "location_on" }} size={14} color={colors.inkMuted} />
-            <Text style={type.caption} numberOfLines={1}>
+            <Glyph name="mappin.and.ellipse" size={13} color={C.muted} />
+            <Text style={T.muted} numberOfLines={1}>
               {place}
             </Text>
           </View>
-          {available && <Chip tone="mint" label={available} />}
+          {available && <Pill tone="mint" label={available} />}
         </View>
         {listing.source !== "dweller" && (
           <View style={styles.source}>
             <AiMark label={`Imported from ${sourceName(listing.source)}`} />
             {missingCount > 0 && (
-              <Text style={type.caption}>
+              <Text style={T.muted}>
                 {missingCount} detail{missingCount === 1 ? "" : "s"} missing
               </Text>
             )}
@@ -106,37 +98,33 @@ export function ListingCard({
 
 const styles = StyleSheet.create({
   card: {
-    padding: space.sm,
-    backgroundColor: colors.white,
-    borderRadius: radius.card,
-    boxShadow: shadow.card,
-  },
-  pressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
-  photo: {
-    aspectRatio: 4 / 3,
-    borderRadius: radius.md - 2,
-    overflow: "hidden",
-    backgroundColor: colors.lavender,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heart: {
-    position: "absolute",
-    top: space.md,
-    right: space.md,
-    width: 36,
-    height: 36,
+    backgroundColor: C.white,
     borderRadius: 18,
-    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: C.line,
+    overflow: "hidden",
+    shadowColor: C.ink,
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  pressed: { opacity: 0.92 },
+  photo: { aspectRatio: 1.62, backgroundColor: C.lavender, alignItems: "center", justifyContent: "center" },
+  heartSlot: { position: "absolute", top: 12, right: 12 },
+  heart: {
+    backgroundColor: C.white,
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: shadow.float,
+    shadowColor: C.ink,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
-  body: { paddingHorizontal: space.sm, paddingTop: space.md, paddingBottom: space.sm, gap: 4 },
-  price: { ...type.price, fontSize: 20, lineHeight: 26 },
-  unknown: { ...fonts.bold, color: colors.inkMuted },
-  meta: { ...type.body, fontSize: 15, lineHeight: 21, fontVariant: ["tabular-nums"] },
-  bottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
-  place: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 },
-  source: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: space.sm },
+  body: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 3 },
+  price: { ...T.price, fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums"] },
+  unknown: { color: C.muted },
+  meta: { ...T.body, fontSize: 15, lineHeight: 21, fontVariant: ["tabular-nums"] },
+  bottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 },
+  place: { flexDirection: "row", alignItems: "center", gap: 5, flexShrink: 1 },
+  source: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
 });

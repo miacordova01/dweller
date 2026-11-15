@@ -1,151 +1,114 @@
 import { useQuery } from "convex/react";
-import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { api } from "../../convex/_generated/api";
-import { BellButton } from "@/components/BellButton";
+import { C, Glyph, Screen, T } from "@/components/DwellerUI";
 import { EmptyState } from "@/components/EmptyState";
-import { Icon, type IconName } from "@/components/Icon";
 import { ListingCard } from "@/components/ListingCard";
-import { TopBar } from "@/components/TopBar";
-import { colors, fonts, radius, shadow, space } from "@/theme";
+import { useSavedListings } from "@/lib/saved";
+import { fonts } from "@/theme";
 
 function FilterPill({
   icon,
   label,
-  active = false,
-  chevron = false,
-  accessibilityLabel,
+  location = false,
 }: {
-  icon: IconName;
+  icon: string;
   label: string;
-  active?: boolean;
-  chevron?: boolean;
-  accessibilityLabel: string;
+  location?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: active }}
-      style={({ pressed }) => [styles.pill, active && styles.pillActive, pressed && styles.pressed]}
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.pill, location && styles.pillLocation, pressed && styles.pressed]}
     >
-      <Icon name={icon} size={16} color={colors.ink} />
+      <Glyph name={icon} size={15} color={location ? C.ink : C.ink} />
       <Text style={styles.pillLabel}>{label}</Text>
-      {chevron && <Icon name={{ ios: "chevron.down", android: "expand_more", web: "expand_more" }} size={12} color={colors.ink} />}
+      {location && <Glyph name="chevron.down" size={11} color={C.ink} />}
     </Pressable>
   );
 }
 
-function Header() {
+export default function Discover() {
+  const listings = useQuery(api.listings.discover);
+  const { isSaved, toggle } = useSavedListings();
   const [query, setQuery] = useState("");
+  const [now] = useState(() => Date.now());
+
   return (
-    <View style={styles.header}>
-      <TopBar
-        right={
-          <BellButton unread accessibilityLabel="Notifications, unread" onPress={() => router.navigate("/activity")} />
-        }
-      />
+    <Screen tab="Discover">
       <View style={styles.search}>
-        <Icon name={{ ios: "magnifyingglass", android: "search", web: "search" }} size={18} color={colors.inkMuted} />
+        <Glyph name="magnifyingglass" size={18} color={C.muted} />
         <TextInput
           testID="discover-search"
           value={query}
           onChangeText={setQuery}
           placeholder="Search homes, neighborhoods..."
-          placeholderTextColor={colors.inkMuted}
+          placeholderTextColor={C.muted}
           style={styles.searchInput}
           returnKeyType="search"
           accessibilityLabel="Search homes and neighborhoods"
         />
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.pillScroller}
-        contentContainerStyle={styles.pills}
-      >
-        <FilterPill
-          active
-          chevron
-          icon={{ ios: "mappin.and.ellipse", android: "location_on", web: "location_on" }}
-          label="San Francisco"
-          accessibilityLabel="Location, San Francisco"
-        />
-        <FilterPill
-          icon={{ ios: "slider.horizontal.3", android: "tune", web: "tune" }}
-          label="Filters"
-          accessibilityLabel="Filters"
-        />
-        <FilterPill
-          icon={{ ios: "person.2", android: "group", web: "group" }}
-          label="Any"
-          accessibilityLabel="People, any number"
-        />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroller} contentContainerStyle={styles.pills}>
+        <FilterPill location icon="mappin.and.ellipse" label="San Francisco" />
+        <FilterPill icon="slider.horizontal.3" label="Filters" />
+        <FilterPill icon="person.2" label="Any" />
+        <FilterPill icon="dollarsign.circle" label="Price" />
+        <FilterPill icon="calendar" label="Move-in" />
       </ScrollView>
-    </View>
-  );
-}
 
-export default function Discover() {
-  const insets = useSafeAreaInsets();
-  const listings = useQuery(api.listings.discover);
-  const [now] = useState(() => Date.now());
-
-  return (
-    <FlatList
-      testID="discover-feed"
-      data={listings ?? []}
-      keyExtractor={(item) => item._id}
-      renderItem={({ item }) => <ListingCard listing={item} now={now} />}
-      ListHeaderComponent={<Header />}
-      ListEmptyComponent={
-        listings === undefined ? (
-          <ActivityIndicator color={colors.inkMuted} style={styles.loading} />
-        ) : (
-          <EmptyState title="No homes yet" body="New listings in San Francisco will show up here as soon as they go live." />
-        )
-      }
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + space.md }]}
-      keyboardDismissMode="on-drag"
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    />
+      {listings === undefined ? (
+        <ActivityIndicator color={C.muted} style={styles.loading} />
+      ) : listings.length === 0 ? (
+        <EmptyState title="No homes yet" body="New listings in San Francisco will show up here as soon as they go live." />
+      ) : (
+        <View style={styles.feed}>
+          {listings.map((listing) => (
+            <ListingCard
+              key={listing._id}
+              listing={listing}
+              now={now}
+              saved={isSaved(listing._id)}
+              onToggleSave={() => toggle(listing._id)}
+            />
+          ))}
+        </View>
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingHorizontal: 20, paddingBottom: space.xxl, gap: space.xl },
-  header: { gap: space.lg },
   search: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space.sm,
-    minHeight: 52,
-    paddingHorizontal: space.lg,
-    borderRadius: radius.card,
-    backgroundColor: colors.white,
-    boxShadow: shadow.card,
+    gap: 10,
+    minHeight: 50,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: C.searchFill,
   },
-  searchInput: { flex: 1, ...fonts.regular, fontSize: 16, color: colors.ink, paddingVertical: space.md },
-  pillScroller: { marginHorizontal: -20 },
-  pills: { gap: space.sm, paddingHorizontal: 20, paddingVertical: 4 },
+  searchInput: { flex: 1, ...fonts.regular, fontSize: 15, color: C.ink, paddingVertical: 12 },
+  pillScroller: { marginHorizontal: -20, marginTop: -4 },
+  pills: { gap: 8, paddingHorizontal: 20 },
   pill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    minHeight: 40,
-    paddingHorizontal: 14,
-    borderRadius: radius.pill,
-    backgroundColor: colors.white,
-    boxShadow: shadow.card,
+    minHeight: 38,
+    paddingHorizontal: 13,
+    borderRadius: 13,
+    backgroundColor: C.white,
+    borderWidth: 1,
+    borderColor: C.line,
   },
-  pillActive: { backgroundColor: colors.lavender, boxShadow: "none" },
+  pillLocation: { backgroundColor: C.skySoft, borderColor: C.skySoft },
+  pillLabel: { ...T.body, fontSize: 14 },
   pressed: { opacity: 0.7 },
-  pillLabel: { ...fonts.bold, fontSize: 14, lineHeight: 18, color: colors.ink },
-  loading: { marginTop: space.xxl },
+  loading: { marginTop: 32 },
+  feed: { gap: 16 },
 });

@@ -31,7 +31,6 @@ export function DoorScene({
   const leafBox = { left: jamb * 0.85, top: leafTop, width: innerW * 0.92, height: leafH, transformOrigin: "left center" as const };
   const leafRadii = { borderTopRightRadius: H * 0.11, borderBottomRightRadius: H * 0.06, borderTopLeftRadius: H * 0.015, borderBottomLeftRadius: H * 0.015 };
   const edge = H * 0.05;
-  const flatStroke = H * 0.04;
 
   const outer = `M0 0 H${cx} A${H / 2} ${H / 2} 0 0 1 ${cx} ${H} H0 Z`;
   const inner = `M${jamb} ${band} H${cx} A${r} ${r} 0 0 1 ${cx} ${H - band} H${jamb} Z`;
@@ -44,12 +43,11 @@ export function DoorScene({
     ],
   }));
   const depthStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(hinge.get(), [0, 0.2], [0, 1], "clamp"),
+    opacity: interpolate(hinge.get(), [0, 0.12], [0, 1], "clamp"),
   }));
   const flatStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(hinge.get(), [0, 0.2], [1, 0], "clamp"),
+    opacity: interpolate(hinge.get(), [0, 0.12], [1, 0], "clamp"),
   }));
-  const flatKnobStyle = useAnimatedStyle(() => ({ transform: [{ scale: knobScale.get() }] }));
   const knobStyle = useAnimatedStyle(() => ({ transform: [{ scale: knobScale.get() }] }));
   const photoStyle = useAnimatedStyle(() => ({
     opacity: peek.get(),
@@ -88,8 +86,7 @@ export function DoorScene({
         </Svg>
       </Animated.View>
 
-      <Animated.View style={[StyleSheet.absoluteFill, depthStyle]}>
-      <Animated.View style={[styles.abs, interiorBox, styles.clip, { borderTopRightRadius: r, borderBottomRightRadius: r }, sceneStyle]}>
+      <Animated.View style={[styles.abs, interiorBox, styles.clip, { borderTopRightRadius: r, borderBottomRightRadius: r }, depthStyle, sceneStyle]}>
         <Svg width={innerW} height={2 * r} style={StyleSheet.absoluteFill}>
           <Defs>
             <RadialGradient id="interior" cx="45%" cy="50%" rx="65%" ry="60%">
@@ -120,17 +117,22 @@ export function DoorScene({
               <Stop offset="0.45" stopColor="#3D2A8E" />
               <Stop offset="1" stopColor="#6B3CC9" />
             </LinearGradient>
-            <LinearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor="#9E6BEF" />
-              <Stop offset="1" stopColor="#D69CFB" />
-            </LinearGradient>
           </Defs>
           <Path d={`${outer} ${inner}`} fill="url(#band)" fillRule="evenodd" />
-          <Path d={inner} fill="none" stroke="url(#rim)" strokeWidth={H * 0.014} />
         </Svg>
+        <Animated.View style={[StyleSheet.absoluteFill, depthStyle]}>
+          <Svg width={W} height={H}>
+            <Defs>
+              <LinearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor="#9E6BEF" />
+                <Stop offset="1" stopColor="#D69CFB" />
+              </LinearGradient>
+            </Defs>
+            <Path d={inner} fill="none" stroke="url(#rim)" strokeWidth={H * 0.014} />
+          </Svg>
+        </Animated.View>
 
-
-        <Animated.View style={[styles.abs, leafBox, leafStyle]}>
+        <Animated.View style={[styles.abs, leafBox, depthStyle, leafStyle]}>
           <View style={[StyleSheet.absoluteFill, styles.clip, leafRadii]}>
             <Svg width={leafBox.width} height={leafH}>
               <Defs>
@@ -160,33 +162,23 @@ export function DoorScene({
             <View style={[styles.knobLight, { width: H * 0.026, height: H * 0.026, borderRadius: H * 0.013, left: H * 0.014, top: H * 0.012 }]} />
           </Animated.View>
         </Animated.View>
-      </Animated.View>
-      </Animated.View>
 
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, flatStyle]}>
-        <Svg width={W} height={H}>
-          <Path
-            d={`M${flatStroke / 2} ${flatStroke / 2} H${cx} A${H / 2 - flatStroke / 2} ${H / 2 - flatStroke / 2} 0 0 1 ${cx} ${H - flatStroke / 2} H${flatStroke / 2} Z`}
-            fill="none"
-            stroke="#0B1020"
-            strokeWidth={flatStroke}
-            strokeLinejoin="miter"
-          />
-        </Svg>
-        <Animated.View
-          style={[
-            styles.knob,
-            {
-              width: H * 0.075,
-              height: H * 0.075,
-              borderRadius: H * 0.0375,
-              left: jamb * 0.85 + leafBox.width * 0.8 - H * 0.0375,
-              top: leafTop + leafH * 0.6 - H * 0.0375,
-            },
-            flatKnobStyle,
-          ]}
-        >
-          <View style={[styles.knobLight, { width: H * 0.026, height: H * 0.026, borderRadius: H * 0.013, left: H * 0.014, top: H * 0.012 }]} />
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, flatStyle]}>
+          <Animated.View
+            style={[
+              styles.knob,
+              {
+                width: H * 0.075,
+                height: H * 0.075,
+                borderRadius: H * 0.0375,
+                left: leafBox.left + leafBox.width * 0.8 - H * 0.0375,
+                top: leafTop + leafH * 0.6 - H * 0.0375,
+              },
+              knobStyle,
+            ]}
+          >
+            <View style={[styles.knobLight, { width: H * 0.026, height: H * 0.026, borderRadius: H * 0.013, left: H * 0.014, top: H * 0.012 }]} />
+          </Animated.View>
         </Animated.View>
       </Animated.View>
     </View>
