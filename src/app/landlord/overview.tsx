@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { router } from "expo-router";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View, type ScrollViewInstance } from "react-native";
 
 import { api } from "../../../convex/_generated/api";
@@ -28,8 +28,22 @@ function monthName(month: string) {
   return new Date(Date.UTC(year, m - 1, 15)).toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
 }
 
+function monthOf(ms: number) {
+  return new Date(ms).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).slice(0, 7);
+}
+
+function useCurrentMonth() {
+  const [month, setMonth] = useState(() => monthOf(Date.now()));
+  useEffect(() => {
+    const id = setInterval(() => setMonth(monthOf(Date.now())), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return month;
+}
+
 export default function LandlordOverview() {
-  const data = useQuery(api.landlord.overview);
+  const month = useCurrentMonth();
+  const data = useQuery(api.landlord.overview, { month });
   const scrollRef = useRef<ScrollViewInstance>(null);
 
   if (data === undefined) {

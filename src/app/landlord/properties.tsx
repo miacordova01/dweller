@@ -6,8 +6,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { api } from "../../../convex/_generated/api";
 import { Wordmark } from "@/components/Wordmark";
-import { BellButton, Chip, EmptyState, LandlordScreen, Loading, NoLandlord, formatDay } from "@/features/landlord/ui";
-import { formatRent } from "@/lib/listings";
+import { BellButton, Chip, EmptyState, LandlordScreen, Loading, NoLandlord } from "@/features/landlord/ui";
+import { formatDate, formatRent } from "@/lib/listings";
 import { colors, fonts, radius, space, type, withAlpha } from "@/theme";
 
 type Filter = "all" | "occupied" | "vacant";
@@ -148,7 +148,7 @@ export default function LandlordProperties() {
               {unit.occupied && unit.tenantName && (
                 <Text style={type.caption}>
                   {unit.tenantName}
-                  {unit.leaseEnd ? " · lease to " + formatDay(unit.leaseEnd) : ""}
+                  {unit.leaseEnd ? " · lease to " + formatDate(unit.leaseEnd) : ""}
                 </Text>
               )}
             </View>

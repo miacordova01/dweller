@@ -50,26 +50,26 @@ async function listingCard(ctx: QueryCtx, listingId: Id<"listings">) {
   };
 }
 
-function currentMonth() {
-  return new Date(Date.now()).toISOString().slice(0, 7);
-}
-
 async function pendingApprovals(ctx: QueryCtx, landlordId: Id<"users">) {
   const proposed = await ctx.db
     .query("agentActions")
     .withIndex("by_status", (q) => q.eq("status", "proposed"))
     .order("desc")
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("actorId"), landlordId),
+        q.eq(q.field("requiresApproval"), true),
+      ),
+    )
     .take(200);
-  return proposed.filter(
-    (action) => action.requiresApproval && action.actorId === landlordId,
-  );
+  return proposed;
 }
 
 const inquiryStatuses = ["open", "touring", "applied", "closed"] as const;
 
 export const overview = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { month: v.string() },
+  handler: async (ctx, { month }) => {
     const landlord = await currentLandlord(ctx);
     if (landlord === null) return null;
     const landlordId = landlord.userId;
@@ -110,7 +110,6 @@ export const overview = query({
       });
     }
 
-    const month = currentMonth();
     const leases = await ctx.db
       .query("leases")
       .withIndex("by_landlord_status", (q) =>
@@ -200,6 +199,7 @@ export const inbox = query({
           .withIndex("by_landlord_status", (q) =>
             q.eq("landlordId", landlord.userId).eq("status", status),
           )
+          .order("desc")
           .take(100),
       ),
     );
