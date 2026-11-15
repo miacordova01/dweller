@@ -9,6 +9,7 @@
  */
 
 import type * as discovery from "../discovery.js";
+import type * as landlord from "../landlord.js";
 import type * as listings from "../listings.js";
 import type * as seed from "../seed.js";
 
@@ -20,6 +21,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   discovery: typeof discovery;
+  landlord: typeof landlord;
   listings: typeof listings;
   seed: typeof seed;
 }>;
