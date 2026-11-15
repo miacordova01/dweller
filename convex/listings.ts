@@ -1,24 +1,74 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
+import { listingSource } from "./schema";
 
-export const list = query({
+const FEED_LIMIT = 100;
+
+const importedSources = listingSource.members
+  .map((member) => member.value)
+  .filter((source) => source !== "dweller");
+
+async function withPhotoUrls(ctx: QueryCtx, listings: Doc<"listings">[]) {
+  return await Promise.all(
+    listings.map(async (listing) => {
+      const storageId = listing.photoStorageIds[0];
+      return {
+        ...listing,
+        photoUrl:
+          listing.photoUrls[0] ?? (storageId ? await ctx.storage.getUrl(storageId) : null),
+      };
+    }),
+  );
+}
+
+export const discover = query({
   args: {},
   handler: async (ctx) => {
     const listings = await ctx.db
       .query("listings")
+      .withIndex("by_source", (q) => q.eq("source", "dweller"))
       .order("desc")
       .filter((q) => q.neq(q.field("status"), "draft"))
-      .take(100);
-    return await Promise.all(
-      listings.map(async (listing) => {
-        const storageId = listing.photoStorageIds[0];
-        return {
-          ...listing,
-          photoUrl:
-            listing.photoUrls[0] ?? (storageId ? await ctx.storage.getUrl(storageId) : null),
-        };
-      }),
+      .take(FEED_LIMIT);
+    return await withPhotoUrls(ctx, listings);
+  },
+});
+
+export const myFinds = query({
+  args: {},
+  handler: async (ctx) => {
+    // There is no sign-in flow yet, so importedBy is unset on every import and
+    // a signed-out caller sees all imported listings. Once auth lands, the
+    // importedBy filter below becomes authoritative and this fallback should go.
+    const userId = await getAuthUserId(ctx);
+    if (userId !== null) {
+      const listings = await ctx.db
+        .query("listings")
+        .withIndex("by_imported_by", (q) => q.eq("importedBy", userId))
+        .order("desc")
+        .filter((q) =>
+          q.and(q.neq(q.field("source"), "dweller"), q.neq(q.field("status"), "draft")),
+        )
+        .take(FEED_LIMIT);
+      return await withPhotoUrls(ctx, listings);
+    }
+    const perSource = await Promise.all(
+      importedSources.map((source) =>
+        ctx.db
+          .query("listings")
+          .withIndex("by_source", (q) => q.eq("source", source))
+          .order("desc")
+          .filter((q) => q.neq(q.field("status"), "draft"))
+          .take(FEED_LIMIT),
+      ),
     );
+    const listings = perSource
+      .flat()
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, FEED_LIMIT);
+    return await withPhotoUrls(ctx, listings);
   },
 });
 

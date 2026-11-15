@@ -25,7 +25,7 @@ const listingStatus = v.union(
 
 // Where a listing came from. Dweller-native listings are "dweller";
 // the rest are created by the discovery agent from a shared link.
-const listingSource = v.union(
+export const listingSource = v.union(
   v.literal("dweller"),
   v.literal("instagram"),
   v.literal("tiktok"),
@@ -104,7 +104,8 @@ export default defineSchema({
   })
     .index("by_landlord", ["landlordId"])
     .index("by_status_neighborhood", ["status", "neighborhood"])
-    .index("by_imported_by", ["importedBy"]),
+    .index("by_imported_by", ["importedBy"])
+    .index("by_source", ["source"]),
 
   // Screenshots uploaded for the discovery agent. One row per upload, written
   // when an import starts, so an upload backs at most one imported listing and
