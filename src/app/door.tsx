@@ -22,8 +22,9 @@ import { Wordmark } from "@/components/Wordmark";
 import { colors, space, type } from "@/theme";
 
 const SKIP_DELAY_MS = 600;
-const EXPAND_DELAY_MS = 1000;
-const EXPAND_DURATION_MS = 1200;
+const PEEK_DELAY_MS = 950;
+const EXPAND_DELAY_MS = 1350;
+const EXPAND_DURATION_MS = 1100;
 
 function Backdrop({ width, height }: { width: number; height: number }) {
   return (
@@ -52,6 +53,7 @@ export default function DoorScreen() {
 
   const knob = useSharedValue(1);
   const hinge = useSharedValue(0);
+  const peek = useSharedValue(0);
   const expand = useSharedValue(0);
 
   useEffect(() => {
@@ -69,7 +71,8 @@ export default function DoorScreen() {
     if (playing.current) return;
     playing.current = true;
     knob.set(withSequence(withTiming(0.75, { duration: 110 }), withSpring(1, { damping: 9, stiffness: 260 })));
-    hinge.set(withDelay(150, withSpring(1, { duration: 900, dampingRatio: 0.8 })));
+    hinge.set(withDelay(150, withSpring(1, { duration: 800, dampingRatio: 0.85 })));
+    peek.set(withDelay(PEEK_DELAY_MS, withTiming(1, { duration: 550, easing: Easing.out(Easing.cubic) })));
     expand.set(
       withDelay(
         EXPAND_DELAY_MS,
@@ -98,7 +101,7 @@ export default function DoorScreen() {
     <View style={styles.screen}>
       <Backdrop width={width} height={height} />
       <Pressable testID="door" style={styles.center} onPress={open} accessibilityRole="button" accessibilityLabel="Open the door">
-        <DoorScene size={doorSize} hinge={hinge} knobScale={knob} expand={expand} />
+        <DoorScene size={doorSize} hinge={hinge} peek={peek} knobScale={knob} expand={expand} />
         <Animated.View style={[{ marginTop: doorSize * 0.24 }, wordmarkStyle]}>
           <Wordmark fontSize={Math.round(width * 0.135)} />
         </Animated.View>
