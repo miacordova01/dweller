@@ -21,7 +21,7 @@ import { TopBar } from "@/components/TopBar";
 import { formatRent } from "@/lib/listings";
 import { Screen } from "@/components/DwellerUI";
 import { demoRenter, longDate, shortDate } from "@/lib/renter";
-import { colors, fonts, radius, space, type } from "@/theme";
+import { colors, fonts, radius, space, type, withAlpha } from "@/theme";
 
 export default function Home() {
   const insets = useSafeAreaInsets();
@@ -46,6 +46,20 @@ export default function Home() {
           ]}
           showsVerticalScrollIndicator={false}
         >
+          <View
+            pointerEvents="none"
+            style={[
+              styles.hero,
+              { top: -(insets.top + space.md), height: insets.top + 300 },
+            ]}
+          >
+            <Image
+              source={require("@/assets/images/welcome-victorians.jpg")}
+              style={styles.heroPhoto}
+              contentFit="cover"
+            />
+            <View style={styles.heroFade} />
+          </View>
           <TopBar
             right={
               <BellButton
@@ -228,6 +242,12 @@ function nextDue(now: number, day: number) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { paddingHorizontal: 20, paddingBottom: space.xxl },
+  hero: { position: "absolute", left: 0, right: 0 },
+  heroPhoto: { ...StyleSheet.absoluteFill, opacity: 0.22 },
+  heroFade: {
+    ...StyleSheet.absoluteFill,
+    experimental_backgroundImage: `linear-gradient(180deg, ${withAlpha(colors.canvas, 0.35)} 0%, ${withAlpha(colors.canvas, 0.75)} 55%, ${colors.canvas} 100%)`,
+  },
   greeting: { marginTop: space.xl, gap: space.xs },
   actions: { flexDirection: "row", gap: space.md, marginTop: space.xl },
   loading: { marginTop: space.xxl },

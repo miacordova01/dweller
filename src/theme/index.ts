@@ -3,7 +3,7 @@ import type { TextStyle } from "react-native";
 export const colors = {
   ink: "#0B1020",
   inkMuted: "#5A6478",
-  canvas: "#FAFBFF",
+  canvas: "#F6F4FD",
   white: "#FFFFFF",
   primary: "#7C3AED",
   mist: "#F4F1FF",
