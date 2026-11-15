@@ -28,5 +28,5 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
     backgroundColor: colors.white,
   },
-  label: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink, fontVariant: ["tabular-nums"] },
+  label: { ...fonts.bold, fontSize: 14, color: colors.ink, fontVariant: ["tabular-nums"] },
 });

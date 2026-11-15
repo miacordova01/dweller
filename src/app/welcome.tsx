@@ -64,13 +64,14 @@ export default function WelcomeScreen() {
         </Animated.View>
 
         <View style={styles.headline}>
-          <Animated.Text entering={FadeInUp.delay(140).duration(450)} style={styles.display}>
-            Find home.
+          <Animated.Text
+            entering={FadeInUp.delay(140).duration(450)}
+            style={styles.display}
+            accessibilityRole="header"
+          >
+            Dwell well.
           </Animated.Text>
-          <Animated.Text entering={FadeInUp.delay(230).duration(450)} style={styles.display}>
-            Feel at home.
-          </Animated.Text>
-          <Animated.Text entering={FadeInUp.delay(320).duration(450)} style={[type.bodyMuted, styles.support]}>
+          <Animated.Text entering={FadeInUp.delay(230).duration(450)} style={[type.bodyMuted, styles.support]}>
             Your next place, and everything after.
           </Animated.Text>
         </View>
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
   wordmark: { alignItems: "center" },
   headline: { paddingHorizontal: space.xl, marginTop: space.xxl },
   display: { ...type.display, fontSize: 40, lineHeight: 44, letterSpacing: 40 * -0.02 },
-  support: { marginTop: space.md, fontSize: 18, lineHeight: 26 },
+  support: { marginTop: space.sm, fontSize: 18, lineHeight: 26 },
   photo: { flex: 1, marginTop: space.lg, marginBottom: -SHEET_OVERLAP, overflow: "hidden" },
   arc: { position: "absolute", top: -1, left: 0 },
   sheet: {

@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { Image } from "expo-image";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -20,8 +20,10 @@ import { api } from "../../../convex/_generated/api";
 import { Icon, type IconName } from "@/components/Icon";
 import { InAppButton } from "@/components/InAppButton";
 import { StatTile } from "@/components/StatTile";
-import { formatRent } from "@/lib/listings";
-import { colors, fonts, radius, space, type, withAlpha } from "@/theme";
+import { listingMeta, listingPlace, listingRent } from "@/lib/listings";
+import { colors, fonts, radius, shadow, space, type, withAlpha } from "@/theme";
+
+const SHEET_OVERLAP = 24;
 
 function goBack() {
   if (router.canGoBack()) router.back();
@@ -63,7 +65,6 @@ export default function ListingDetail() {
   if (listing === undefined) {
     return (
       <View style={styles.centered}>
-        <Stack.Screen options={{ headerShown: false }} />
         <ActivityIndicator color={colors.inkMuted} />
       </View>
     );
@@ -72,7 +73,6 @@ export default function ListingDetail() {
   if (listing === null) {
     return (
       <View style={[styles.centered, { padding: space.xl }]}>
-        <Stack.Screen options={{ headerShown: false }} />
         <Text style={type.heading}>This home isn’t available</Text>
         <Text style={[type.bodyMuted, styles.centerText]}>It may have been leased or taken down.</Text>
         <View style={styles.missingAction}>
@@ -82,17 +82,15 @@ export default function ListingDetail() {
     );
   }
 
-  const galleryHeight = Math.round(width * 0.92);
+  const galleryHeight = Math.round(width * 1.05);
   const missing = new Set(listing.missingFields);
-  const rent = missing.has("rentMonthlyCents") ? "Rent unknown" : `${formatRent(listing.rentMonthlyCents)}/mo`;
+  const rent = listingRent(listing);
   const beds = missing.has("bedrooms") ? null : listing.bedrooms === 0 ? "Studio" : `${listing.bedrooms} bd`;
   const baths = missing.has("bathrooms") ? null : `${listing.bathrooms} ba`;
   const sqft = listing.squareFeet ? `${listing.squareFeet.toLocaleString("en-US")} sq ft` : null;
-  const city = listing.city === "San Francisco" ? "SF" : listing.city;
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 104 + insets.bottom }} showsVerticalScrollIndicator={false}>
         <View style={{ height: galleryHeight }}>
           {listing.photos.length > 0 ? (
@@ -120,7 +118,7 @@ export default function ListingDetail() {
             </View>
           )}
           {listing.photos.length > 1 && (
-            <View style={styles.dots} accessibilityLabel={`Photo ${page + 1} of ${listing.photos.length}`}>
+            <View style={[styles.dots, { bottom: SHEET_OVERLAP + space.md }]} accessibilityLabel={`Photo ${page + 1} of ${listing.photos.length}`}>
               {listing.photos.map((uri, index) => (
                 <View key={`${index}-${uri}`} style={[styles.dot, index === page && styles.dotActive]} />
               ))}
@@ -154,12 +152,10 @@ export default function ListingDetail() {
 
         <View style={styles.body}>
           <Text style={styles.price}>{rent}</Text>
-          <Text style={styles.meta}>{[beds, baths, sqft].filter(Boolean).join(" · ")}</Text>
+          <Text style={styles.meta}>{listingMeta(listing)}</Text>
           <View style={styles.place}>
             <Icon name={{ ios: "mappin", android: "location_on", web: "location_on" }} size={14} color={colors.inkMuted} />
-            <Text style={type.caption}>
-              {listing.neighborhood}, {city}
-            </Text>
+            <Text style={styles.placeText}>{listingPlace(listing)}</Text>
           </View>
 
           <Pressable
@@ -180,7 +176,7 @@ export default function ListingDetail() {
             <StatTile icon={{ ios: "square.dashed", android: "square_foot", web: "square_foot" }} label={sqft ?? "— sq ft"} />
           </View>
 
-          <Text style={[type.heading, styles.sectionTitle]}>About this home</Text>
+          <Text style={[type.section, styles.sectionTitle]}>About this home</Text>
           <Text style={styles.about}>{listing.description ?? listing.title}</Text>
         </View>
       </ScrollView>
@@ -210,12 +206,11 @@ const styles = StyleSheet.create({
   noPhoto: { backgroundColor: colors.canvas, alignItems: "center", justifyContent: "center" },
   dots: {
     position: "absolute",
-    bottom: space.md,
     alignSelf: "center",
     flexDirection: "row",
     gap: 6,
   },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: withAlpha(colors.white, 0.55) },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: withAlpha(colors.white, 0.55) },
   dotActive: { backgroundColor: colors.white },
   floatingRow: {
     position: "absolute",
@@ -232,12 +227,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: `0 2px 8px ${withAlpha(colors.ink, 0.12)}`,
+    boxShadow: shadow.float,
   },
-  body: { padding: 20, gap: space.xs },
-  price: { fontFamily: fonts.semibold, fontSize: 28, lineHeight: 34, letterSpacing: -0.4, color: colors.ink, fontVariant: ["tabular-nums"] },
-  meta: { ...type.body, fontVariant: ["tabular-nums"] },
+  body: {
+    marginTop: -SHEET_OVERLAP,
+    paddingHorizontal: 20,
+    paddingTop: space.xl,
+    gap: space.xs,
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.lg + 4,
+    borderTopRightRadius: radius.lg + 4,
+  },
+  price: { ...type.price, fontSize: 28, lineHeight: 34, letterSpacing: -0.6 },
+  meta: { ...type.body, fontSize: 17, fontVariant: ["tabular-nums"] },
   place: { flexDirection: "row", alignItems: "center", gap: space.xs },
+  placeText: { ...type.caption, fontSize: 15, lineHeight: 20 },
   askRow: {
     marginTop: space.lg,
     flexDirection: "row",
@@ -248,8 +252,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.lavender,
   },
-  sparkle: { fontFamily: fonts.regular, fontSize: 18, color: colors.primary },
-  askLabel: { flex: 1, fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+  sparkle: { ...fonts.regular, fontSize: 18, color: colors.primary },
+  askLabel: { flex: 1, ...fonts.bold, fontSize: 16, color: colors.ink },
   stats: { flexDirection: "row", gap: space.sm, marginTop: space.lg },
   sectionTitle: { marginTop: space.xl },
   about: { ...type.bodyMuted, marginTop: space.xs },

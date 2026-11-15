@@ -1,8 +1,8 @@
 import { useQuery } from "convex/react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { api } from "../../../convex/_generated/api";
-import type { Doc } from "../../../convex/_generated/dataModel";
+import { api } from "../../../../convex/_generated/api";
+import type { Doc } from "../../../../convex/_generated/dataModel";
 import {
   Avatar,
   Card,
@@ -94,6 +94,6 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: 2 },
   nameRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: space.sm },
   name: { ...type.label, fontSize: 16, lineHeight: 22, flexShrink: 1 },
-  message: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.ink },
-  agent: { fontFamily: fonts.medium, color: colors.primary },
+  message: { ...fonts.regular, fontSize: 15, lineHeight: 21, color: colors.ink },
+  agent: { ...fonts.bold, color: colors.primary },
 });

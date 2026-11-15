@@ -1,5 +1,4 @@
 import { useMutation, useQuery } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -17,45 +16,10 @@ import {
   NoLandlord,
   ScreenHeader,
   Thumb,
-  formatDay,
-  formatWhen,
   timeAgo,
 } from "@/features/landlord/ui";
-import { formatRent } from "@/lib/listings";
+import { agentNames, describe, type Approval } from "@/features/landlord/describe";
 import { colors, fonts, radius, space, type } from "@/theme";
-
-type Approval = NonNullable<FunctionReturnType<typeof api.landlord.approvals>>[number];
-
-const agentNames: Record<Approval["capability"], string> = {
-  leasing: "Leasing agent",
-  maintenance: "Maintenance agent",
-  rent: "Rent agent",
-  discovery: "Discovery agent",
-};
-
-function describe(item: Approval) {
-  switch (item.kind) {
-    case "bookTour":
-      return {
-        headline: "Book a tour with " + item.renterName,
-        detail: formatWhen(item.scheduledFor) + " · " + item.durationMinutes + " min",
-      };
-    case "acceptVendorQuote":
-      return {
-        headline: "Accept " + item.vendorName + "'s " + formatRent(item.quoteCents) + " repair quote",
-        detail: "Visit " + formatWhen(item.slot),
-      };
-    case "sendRentReminder":
-      return {
-        headline:
-          "Remind " + item.tenantName + " that " + formatRent(item.amountCents) + " rent is due" +
-          (item.dueDate ? " " + formatDay(item.dueDate) : ""),
-        detail: "Sends " + formatWhen(item.sendAt),
-      };
-    default:
-      return { headline: "Run " + item.tool, detail: null };
-  }
-}
 
 function ApprovalCard({ item }: { item: Approval }) {
   const approve = useMutation(api.landlord.approve);
@@ -188,7 +152,7 @@ const styles = StyleSheet.create({
     paddingLeft: space.md,
     paddingVertical: 2,
   },
-  quoteText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.ink },
+  quoteText: { ...fonts.regular, fontSize: 15, lineHeight: 22, color: colors.ink },
   reason: {
     flexDirection: "row",
     gap: space.sm,
@@ -196,8 +160,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: space.md,
   },
-  sparkle: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 20, color: colors.primary },
-  reasonText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.ink },
-  error: { fontFamily: fonts.regular, fontSize: 14, color: colors.error },
+  sparkle: { ...fonts.regular, fontSize: 13, lineHeight: 20, color: colors.primary },
+  reasonText: { flex: 1, ...fonts.regular, fontSize: 14, lineHeight: 20, color: colors.ink },
+  error: { ...fonts.regular, fontSize: 14, color: colors.error },
   buttons: { flexDirection: "row", gap: space.md, marginTop: space.sm },
 });

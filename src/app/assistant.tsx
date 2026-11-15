@@ -1,4 +1,4 @@
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useRef, useState, type ComponentRef } from "react";
 import {
   KeyboardAvoidingView,
@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Card } from "@/components/Card";
 import { Icon, type IconName } from "@/components/Icon";
 import { demoRenter } from "@/lib/renter";
-import { colors, fonts, radius, space, type, withAlpha } from "@/theme";
+import { colors, fonts, radius, shadow, space, type, withAlpha } from "@/theme";
 
 const actions: { key: "tour" | "repair" | "lease" | "listings"; icon: IconName; title: string; description: string }[] = [
   {
@@ -71,7 +71,6 @@ export default function Assistant() {
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.wash} pointerEvents="none" />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + space.lg }]}
@@ -160,10 +159,10 @@ const styles = StyleSheet.create({
   },
   content: { paddingHorizontal: 20, paddingBottom: space.xl },
   titleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  sparkle: { fontFamily: fonts.regular, fontSize: 26, color: colors.primary },
+  sparkle: { ...fonts.regular, fontSize: 26, color: colors.primary },
   title: { ...type.title, fontSize: 26 },
   greeting: { marginTop: 72, gap: space.xs },
-  subtitle: { ...type.heading, fontFamily: fonts.medium, fontSize: 20, lineHeight: 26 },
+  subtitle: { ...type.heading, ...fonts.bold, fontSize: 20, lineHeight: 26 },
   actions: { marginTop: space.xl, gap: space.md },
   actionCard: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md },
   actionIcon: {
@@ -175,7 +174,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   actionText: { flex: 1, gap: 2 },
-  actionTitle: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20, color: colors.ink },
+  actionTitle: { ...fonts.bold, fontSize: 15, lineHeight: 20, color: colors.ink },
   note: { marginTop: space.lg, textAlign: "center" },
   composerBar: { paddingHorizontal: 20, paddingTop: space.sm, backgroundColor: colors.canvas },
   composer: {
@@ -189,9 +188,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderWidth: StyleSheet.hairlineWidth * 2,
     borderColor: colors.hairline,
-    boxShadow: `0 4px 16px ${withAlpha(colors.ink, 0.06)}`,
+    boxShadow: shadow.card,
   },
-  composerSparkle: { fontFamily: fonts.regular, fontSize: 16, color: colors.primary },
+  composerSparkle: { ...fonts.regular, fontSize: 16, color: colors.primary },
   input: { flex: 1, ...type.body, paddingVertical: space.sm },
   send: {
     width: 40,

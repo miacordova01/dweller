@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -38,7 +38,6 @@ export default function Maintenance() {
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + space.sm, paddingBottom: insets.bottom + space.xxl }]}
         keyboardShouldPersistTaps="handled"
@@ -117,7 +116,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20 },
   back: { width: 40, height: 40, justifyContent: "center" },
   title: { marginTop: space.sm, marginBottom: space.lg },
-  photo: { width: "100%", aspectRatio: 2.2, borderRadius: radius.md + 2, backgroundColor: colors.canvas },
+  photo: { width: "100%", aspectRatio: 2.2, borderRadius: radius.card, backgroundColor: colors.canvas },
   addPhoto: {
     alignItems: "center",
     justifyContent: "center",
@@ -149,6 +148,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth * 2,
     borderColor: colors.hairline,
   },
-  input: { flex: 1, fontFamily: fonts.regular, fontSize: 16, color: colors.ink, paddingVertical: space.sm },
+  input: { flex: 1, ...fonts.regular, fontSize: 16, color: colors.ink, paddingVertical: space.sm },
   agent: { marginTop: space.xl },
 });

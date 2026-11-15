@@ -517,11 +517,11 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: 22,
-    fontFamily: fonts.semibold,
+    ...fonts.bold,
     color: colors.ink,
     letterSpacing: -0.4,
   },
-  link: { fontSize: 16, color: colors.blue, fontFamily: fonts.medium },
+  link: { fontSize: 16, color: colors.blue, ...fonts.bold },
   body: { padding: 20, paddingBottom: 48, gap: 12 },
   loading: { marginTop: 48 },
   intro: {
@@ -532,13 +532,13 @@ const styles = StyleSheet.create({
   },
   introText: {
     flex: 1,
-    fontFamily: fonts.regular,
+    ...fonts.regular,
     fontSize: 15,
     lineHeight: 21,
     color: colors.inkMuted,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.blue,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.white,
     fontSize: 16,
-    fontFamily: fonts.medium,
+    ...fonts.bold,
   },
   secondaryButton: {
     backgroundColor: colors.white,
@@ -559,11 +559,11 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: colors.ink,
     fontSize: 16,
-    fontFamily: fonts.medium,
+    ...fonts.bold,
   },
   pressed: { opacity: 0.7 },
   hint: {
-    fontFamily: fonts.regular,
+    ...fonts.regular,
     fontSize: 13,
     lineHeight: 18,
     color: colors.inkMuted,
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.hairline,
   },
   dividerText: {
-    fontFamily: fonts.regular,
+    ...fonts.regular,
     fontSize: 13,
     color: colors.inkMuted,
   },
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontFamily: fonts.regular,
+    ...fonts.regular,
     fontSize: 16,
     color: colors.ink,
   },
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.error,
-    fontFamily: fonts.regular,
+    ...fonts.regular,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -617,9 +617,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
   },
-  aiCardTitle: { fontSize: 16, fontFamily: fonts.semibold, color: colors.ink },
+  aiCardTitle: { fontSize: 16, ...fonts.bold, color: colors.ink },
   aiCardText: {
-    fontFamily: fonts.regular,
+    ...fonts.regular,
     fontSize: 14,
     lineHeight: 20,
     color: colors.inkMuted,
@@ -638,18 +638,18 @@ const styles = StyleSheet.create({
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   fieldLabel: {
     fontSize: 13,
-    fontFamily: fonts.medium,
+    ...fonts.bold,
     color: colors.inkMuted,
   },
   fieldValue: {
-    fontFamily: fonts.regular,
+    ...fonts.regular,
     fontSize: 16,
     color: colors.ink,
     lineHeight: 22,
   },
   missingTag: {
     fontSize: 11,
-    fontFamily: fonts.semibold,
+    ...fonts.bold,
     color: colors.primary,
     backgroundColor: colors.lavender,
     borderRadius: 6,

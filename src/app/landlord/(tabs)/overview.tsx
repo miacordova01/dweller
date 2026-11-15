@@ -3,8 +3,8 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View, type ScrollViewInstance } from "react-native";
 
-import { api } from "../../../convex/_generated/api";
-import { Wordmark } from "@/components/Wordmark";
+import { api } from "../../../../convex/_generated/api";
+import { TopBar } from "@/components/TopBar";
 import {
   AgentChip,
   BellButton,
@@ -66,10 +66,7 @@ export default function LandlordOverview() {
 
   return (
     <LandlordScreen scrollRef={scrollRef}>
-      <View style={styles.top}>
-        <Wordmark fontSize={30} />
-        <BellButton count={data.approvalCount} />
-      </View>
+      <TopBar right={<BellButton count={data.approvalCount} />} />
 
       <View style={styles.greeting}>
         <Text style={type.display}>Hi {data.name},</Text>
@@ -80,23 +77,23 @@ export default function LandlordOverview() {
         <QuickAction
           label="AI Assist"
           ai
-          symbol={{ ios: "sparkles", android: "auto_awesome", web: "auto_awesome" }}
+          icon={{ ios: "sparkles", android: "auto_awesome", web: "auto_awesome" }}
           onPress={() => router.push("/assistant")}
         />
         <QuickAction
           label="Add listing"
-          symbol={{ ios: "plus.square", android: "add_home", web: "add_home" }}
-          onPress={() => router.push("/")}
+          icon={{ ios: "plus.square", android: "add_home", web: "add_home" }}
+          onPress={() => router.push("/list-your-place")}
         />
         <QuickAction
           label="Approvals"
           badge={data.approvalCount}
-          symbol={{ ios: "checkmark.seal", android: "fact_check", web: "fact_check" }}
+          icon={{ ios: "checkmark.seal", android: "fact_check", web: "fact_check" }}
           onPress={() => router.push("/landlord/approvals")}
         />
         <QuickAction
           label="Rent"
-          symbol={{ ios: "creditcard", android: "credit_card", web: "credit_card" }}
+          icon={{ ios: "creditcard", android: "credit_card", web: "credit_card" }}
           onPress={() => scrollRef.current?.scrollToEnd({ animated: true })}
         />
       </View>
@@ -112,7 +109,7 @@ export default function LandlordOverview() {
             <Card
               key={item.id}
               accessibilityLabel={item.renterName + " applied"}
-              onPress={() => router.push("/landlord/inbox")}
+              onPress={() => router.navigate("/landlord/inbox")}
             >
               <View style={styles.row}>
                 <Thumb uri={item.listing?.photoUrl} />
@@ -178,7 +175,6 @@ export default function LandlordOverview() {
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   greeting: { gap: space.xs, marginTop: space.md },
   quickRow: { flexDirection: "row", gap: space.md, marginTop: space.sm },
   row: { flexDirection: "row", alignItems: "center", gap: space.md },
@@ -191,8 +187,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: space.md,
   },
-  sparkle: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 20, color: colors.primary },
-  summaryText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.ink },
+  sparkle: { ...fonts.regular, fontSize: 13, lineHeight: 20, color: colors.primary },
+  summaryText: { flex: 1, ...fonts.regular, fontSize: 14, lineHeight: 20, color: colors.ink },
   rentRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
   rentAmount: { ...type.price, fontSize: 28, lineHeight: 34 },
 });

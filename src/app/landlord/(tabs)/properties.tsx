@@ -4,11 +4,11 @@ import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { api } from "../../../convex/_generated/api";
-import { Wordmark } from "@/components/Wordmark";
+import { api } from "../../../../convex/_generated/api";
+import { TopBar } from "@/components/TopBar";
 import { BellButton, Chip, EmptyState, LandlordScreen, Loading, NoLandlord } from "@/features/landlord/ui";
 import { formatDate, formatRent } from "@/lib/listings";
-import { colors, fonts, radius, space, type, withAlpha } from "@/theme";
+import { colors, fonts, radius, shadow, space, type } from "@/theme";
 
 type Filter = "all" | "occupied" | "vacant";
 
@@ -60,10 +60,7 @@ export default function LandlordProperties() {
 
   return (
     <LandlordScreen>
-      <View style={styles.top}>
-        <Wordmark fontSize={30} />
-        <BellButton count={approvals?.length ?? 0} />
-      </View>
+      <TopBar right={<BellButton count={approvals?.length ?? 0} />} />
 
       <View style={styles.search}>
         <SymbolView
@@ -160,40 +157,39 @@ export default function LandlordProperties() {
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   search: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
     backgroundColor: colors.white,
-    borderRadius: radius.pill,
+    borderRadius: radius.card,
     paddingHorizontal: space.lg,
-    minHeight: 48,
-    boxShadow: "0px 4px 16px " + withAlpha(colors.ink, 0.07),
+    minHeight: 52,
+    boxShadow: shadow.card,
   },
-  searchInput: { flex: 1, fontFamily: fonts.regular, fontSize: 15, color: colors.ink, paddingVertical: space.md },
+  searchInput: { flex: 1, ...fonts.regular, fontSize: 15, color: colors.ink, paddingVertical: space.md },
   pills: { flexDirection: "row", gap: space.sm },
   pill: {
+    justifyContent: "center",
+    minHeight: 40,
     paddingHorizontal: 14,
-    paddingVertical: 8,
     borderRadius: radius.pill,
     backgroundColor: colors.white,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: colors.hairline,
+    boxShadow: shadow.card,
   },
-  pillActive: { backgroundColor: withAlpha(colors.sky, 0.35), borderColor: "transparent" },
-  pillText: { fontFamily: fonts.medium, fontSize: 14, color: colors.inkMuted },
+  pillActive: { backgroundColor: colors.lavender, boxShadow: "none" },
+  pillText: { ...fonts.bold, fontSize: 14, color: colors.inkMuted },
   pillTextActive: { color: colors.ink },
   card: {
+    padding: space.sm,
     backgroundColor: colors.white,
-    borderRadius: 16,
-    overflow: "hidden",
-    boxShadow: "0px 4px 16px " + withAlpha(colors.ink, 0.07),
+    borderRadius: radius.card,
+    boxShadow: shadow.card,
   },
-  photo: { width: "100%", aspectRatio: 16 / 10, backgroundColor: colors.lavender },
-  body: { padding: space.lg, gap: 4 },
+  photo: { width: "100%", aspectRatio: 4 / 3, borderRadius: radius.md - 2, backgroundColor: colors.lavender },
+  body: { paddingHorizontal: space.sm, paddingTop: space.md, paddingBottom: space.sm, gap: 4 },
   priceRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  per: { fontFamily: fonts.medium, fontSize: 15, color: colors.inkMuted },
+  per: { ...fonts.bold, fontSize: 15, color: colors.inkMuted },
   meta: { ...type.body, fontSize: 15 },
   bottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
   place: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 },

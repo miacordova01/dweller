@@ -39,5 +39,5 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: radius.pill,
   },
-  label: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
+  label: { ...fonts.bold, fontSize: 12, lineHeight: 16 },
 });

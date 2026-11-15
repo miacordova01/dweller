@@ -24,14 +24,12 @@ import { Wordmark } from "@/components/Wordmark";
 import { colors, space, type } from "@/theme";
 
 const SKIP_DELAY_MS = 600;
-const EXPAND_DELAY_MS = 900;
+const EXPAND_DELAY_MS = 1300;
 const EXPAND_DURATION_MS = 1200;
 const BLOOM_START = 0.35;
-const REST = 0.58;
-
 function opened(hinge: number) {
   "worklet";
-  return interpolate(hinge, [REST, 1], [0, 1], "clamp");
+  return interpolate(hinge, [0, 1], [0, 1], "clamp");
 }
 
 function Interior({ hinge, expand }: { hinge: SharedValue<number>; expand: SharedValue<number> }) {
@@ -91,7 +89,7 @@ export default function DoorScreen() {
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const doorSize = Math.min(width * 0.5, 240);
+  const doorSize = Math.min(height * 0.46, width);
   const coverScale = (Math.hypot(width, height) / doorSize) * 2.4;
   const bloomSize = Math.hypot(width, height);
 
@@ -100,7 +98,7 @@ export default function DoorScreen() {
   const left = useRef(false);
 
   const knob = useSharedValue(1);
-  const hinge = useSharedValue(REST);
+  const hinge = useSharedValue(0);
   const expand = useSharedValue(0);
 
   useEffect(() => {
@@ -123,7 +121,7 @@ export default function DoorScreen() {
         withSpring(1, { damping: 9, stiffness: 260 }),
       ),
     );
-    hinge.set(withDelay(150, withSpring(1, { duration: 800, dampingRatio: 0.72 })));
+    hinge.set(withDelay(150, withSpring(1, { duration: 1000, dampingRatio: 0.72 })));
     expand.set(
       withDelay(
         EXPAND_DELAY_MS,
@@ -157,12 +155,12 @@ export default function DoorScreen() {
   });
 
   const haloStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(expand.get(), [0, 0.4], [1, 0], "clamp"),
+    opacity: opened(hinge.get()) * interpolate(expand.get(), [0, 0.4], [1, 0], "clamp"),
   }));
 
   const wordmarkStyle = useAnimatedStyle(() => ({
-    opacity: 1 - opened(hinge.get()) * 1.6,
-    transform: [{ translateY: opened(hinge.get()) * 12 }],
+    opacity: interpolate(expand.get(), [0.05, BLOOM_START + 0.1], [1, 0], "clamp"),
+    transform: [{ translateY: interpolate(expand.get(), [0, BLOOM_START + 0.1], [0, 16], "clamp") }],
   }));
 
   const bloomStyle = useAnimatedStyle(() => ({
@@ -218,7 +216,7 @@ export default function DoorScreen() {
           </Animated.View>
           <DoorMark
           size={doorSize}
-          strokeRatio={0.07}
+          strokeRatio={0.035}
           surface={colors.mist}
           leafColor={colors.white}
           lit
@@ -230,7 +228,7 @@ export default function DoorScreen() {
           />
         </View>
         <Animated.View style={[styles.wordmark, wordmarkStyle]}>
-          <Wordmark fontSize={46} />
+          <Wordmark fontSize={48} />
         </Animated.View>
       </View>
       <Animated.View
@@ -272,6 +270,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   pool: { position: "absolute" },
   bloom: { position: "absolute" },
-  wordmark: { marginTop: space.xxxl },
+  wordmark: { marginTop: space.xl },
   skip: { position: "absolute", right: space.xl, padding: space.sm },
 });
