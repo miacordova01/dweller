@@ -185,10 +185,11 @@ export default function Assistant() {
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
+    if (listingId) return;
     AsyncStorage.getItem(CONVERSATION_KEY)
       .then((id) => id && setConversationId((current) => current ?? (id as Id<"conversations">)))
       .catch(() => {});
-  }, []);
+  }, [listingId]);
   const live = useQuery(
     api.assistant.conversation,
     conversationId ? { conversationId } : "skip",

@@ -16,7 +16,7 @@ const importedSources = listingSource.members
   .map((member) => member.value)
   .filter((source) => source !== "dweller");
 
-async function withPhotoUrls(ctx: QueryCtx, listings: Doc<"listings">[]) {
+export async function withPhotoUrls(ctx: QueryCtx, listings: Doc<"listings">[]) {
   return await Promise.all(
     listings.map(async (listing) => {
       const storageId = listing.photoStorageIds[0];

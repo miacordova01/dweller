@@ -30,6 +30,9 @@ type Profile = {
 
 type OnboardingState = Profile & {
   completed: boolean | null;
+  // In memory only: every cold launch opens on the door, onboarded or not.
+  entered: boolean;
+  enter: () => void;
   setRole: (role: Role) => void;
   updateRenter: (patch: Partial<RenterAnswers>) => void;
   updateLandlord: (patch: Partial<LandlordAnswers>) => void;
@@ -39,14 +42,27 @@ type OnboardingState = Profile & {
 
 const emptyProfile: Profile = {
   role: null,
-  renter: { location: "", budget: null, moveIn: null, space: null, bedrooms: null, amenities: [] },
-  landlord: { propertyCount: null, location: "", occupied: null, listVacancies: null },
+  renter: {
+    location: "",
+    budget: null,
+    moveIn: null,
+    space: null,
+    bedrooms: null,
+    amenities: [],
+  },
+  landlord: {
+    propertyCount: null,
+    location: "",
+    occupied: null,
+    listVacancies: null,
+  },
 };
 
 const OnboardingContext = createContext<OnboardingState | null>(null);
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [completed, setCompleted] = useState<boolean | null>(null);
+  const [entered, setEntered] = useState(false);
   const [profile, setProfile] = useState<Profile>(emptyProfile);
 
   useEffect(() => {
@@ -78,6 +94,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     try {
       await AsyncStorage.setItem(COMPLETED_KEY, "true");
     } finally {
+      setEntered(true);
       setCompleted(true);
     }
   }
@@ -95,10 +112,17 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     <OnboardingContext
       value={{
         completed,
+        entered,
+        enter: () => setEntered(true),
         ...profile,
         setRole: (role) => update((prev) => ({ ...prev, role })),
-        updateRenter: (patch) => update((prev) => ({ ...prev, renter: { ...prev.renter, ...patch } })),
-        updateLandlord: (patch) => update((prev) => ({ ...prev, landlord: { ...prev.landlord, ...patch } })),
+        updateRenter: (patch) =>
+          update((prev) => ({ ...prev, renter: { ...prev.renter, ...patch } })),
+        updateLandlord: (patch) =>
+          update((prev) => ({
+            ...prev,
+            landlord: { ...prev.landlord, ...patch },
+          })),
         complete,
         startOver,
       }}
@@ -110,6 +134,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
 export function useOnboarding() {
   const value = use(OnboardingContext);
-  if (!value) throw new Error("useOnboarding must be used inside OnboardingProvider");
+  if (!value)
+    throw new Error("useOnboarding must be used inside OnboardingProvider");
   return value;
 }

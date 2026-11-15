@@ -1,74 +1,92 @@
 import { useQuery } from "convex/react";
 import { router } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { api } from "../../convex/_generated/api";
 import { ActivityRow } from "@/components/ActivityRow";
-import { ScreenTitle } from "@/components/ScreenTitle";
-import { formatRent, sourceName } from "@/lib/listings";
-import { demoLease, longDate, nextTourAt, tourLabel } from "@/lib/renter";
+import { C, Screen, Section, T } from "@/components/DwellerUI";
+import { sourceName } from "@/lib/listings";
 import { timeAgo } from "@/lib/time";
-import { colors, space, type } from "@/theme";
 
 const openListing = (id: string) => router.push({ pathname: "/listing/[id]", params: { id } });
 
-export default function RenterActivity() {
-  const insets = useSafeAreaInsets();
-  const listings = useQuery(api.listings.discover, {});
-  const finds = useQuery(api.listings.myFinds);
-  const [now] = useState(() => Date.now());
+function when(ms: number) {
+  return new Date(ms).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
 
-  const homes = (listings ?? []).filter((listing) => listing.photoUrl);
-  const tourListing = homes[0];
-  const leaseListing = homes[1];
-  const lease = demoLease(now, leaseListing?.leaseTermMonths);
+const tourChip = {
+  proposed: { label: "Awaiting approval", tone: "lavender" },
+  confirmed: { label: "Confirmed", tone: "mint" },
+  declined: { label: "Declined", tone: "neutral" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+  completed: { label: "Done", tone: "neutral" },
+} as const;
+
+const ticketChip = (status: string) =>
+  status === "resolved" || status === "closed"
+    ? ({ label: "Done", tone: "mint" } as const)
+    : status === "scheduled" || status === "in_progress"
+      ? ({ label: "Scheduled", tone: "lavender" } as const)
+      : ({ label: "Reviewing", tone: "lavender" } as const);
+
+export default function RenterActivity() {
+  const tours = useQuery(api.tours.mine);
+  const tickets = useQuery(api.maintenance.mine);
+  const finds = useQuery(api.listings.myFinds);
+
+  if (tours === undefined || tickets === undefined || finds === undefined) {
+    return (
+      <Screen tab="Activity" title="Activity">
+        <ActivityIndicator color={C.muted} />
+      </Screen>
+    );
+  }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + space.md }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <ScreenTitle title="Activity" subtitle="Everything Dweller is handling for you." />
+    <Screen tab="Activity" title="Activity">
+      <Text style={[T.muted, styles.subtitle]}>Everything Dweller is handling for you.</Text>
 
-      {listings === undefined || finds === undefined ? (
-        <ActivityIndicator color={colors.inkMuted} style={styles.loading} />
-      ) : (
-        <>
-          <Text style={[type.section, styles.section]}>In progress</Text>
-          <View style={styles.list}>
+      <Section title="Tours" />
+      <View style={styles.list}>
+        {tours.length === 0 ? (
+          <Text style={T.muted}>No tours yet. Ask Dweller AI to book one from any listing.</Text>
+        ) : (
+          tours.map((tour) => (
             <ActivityRow
-              testID="activity-repair"
-              ai
-              title="Dweller is getting a repair quote"
-              detail="Kitchen sink is leaking · it will lock in a time once approved"
-              chip={{ label: "Reviewing & scheduling", tone: "lavender" }}
-              when="Today"
+              key={tour._id}
+              icon={{ ios: "calendar", android: "calendar_today", web: "calendar_today" }}
+              ai={tour.proposedBy === "agent"}
+              title={`Tour at ${tour.address}`}
+              detail={when(tour.scheduledFor)}
+              chip={tourChip[tour.status as keyof typeof tourChip] ?? { label: tour.status, tone: "neutral" }}
+              onPress={() => openListing(tour.listingId)}
+            />
+          ))
+        )}
+      </View>
+
+      <Section title="Repairs" />
+      <View style={styles.list}>
+        {tickets.length === 0 ? (
+          <Text style={T.muted}>No repair requests.</Text>
+        ) : (
+          tickets.slice(0, 5).map((ticket) => (
+            <ActivityRow
+              key={ticket._id}
+              icon={{ ios: "wrench", android: "build", web: "build" }}
+              title={ticket.title}
+              detail={timeAgo(ticket._creationTime)}
+              chip={ticketChip(ticket.status)}
               onPress={() => router.push("/maintenance")}
             />
-            {tourListing && (
-              <ActivityRow
-                icon={{ ios: "calendar", android: "calendar_today", web: "calendar_today" }}
-                title={`Tour at ${tourListing.address}`}
-                detail={tourLabel(nextTourAt(now))}
-                chip={{ label: "Confirmed", tone: "mint" }}
-                onPress={() => openListing(tourListing._id)}
-              />
-            )}
-          </View>
+          ))
+        )}
+      </View>
 
-          <Text style={[type.section, styles.section]}>Recent</Text>
+      {finds.length > 0 && (
+        <>
+          <Section title="Imported" />
           <View style={styles.list}>
-            {leaseListing && (
-              <ActivityRow
-                icon={{ ios: "creditcard", android: "credit_card", web: "credit_card" }}
-                title={`Rent paid · ${formatRent(leaseListing.rentMonthlyCents)}`}
-                detail={`${leaseListing.address} · ${longDate(lease.lastPaid)}`}
-                chip={{ label: "Paid", tone: "mint" }}
-              />
-            )}
             {finds.slice(0, 5).map((find) => (
               <ActivityRow
                 key={find._id}
@@ -79,20 +97,14 @@ export default function RenterActivity() {
                 onPress={() => openListing(find._id)}
               />
             ))}
-            {!leaseListing && finds.length === 0 && (
-              <Text style={type.bodyMuted}>Nothing yet. Saved homes, tours and payments will show up here.</Text>
-            )}
           </View>
         </>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingHorizontal: 20, paddingBottom: space.xxl },
-  loading: { marginTop: space.xxl },
-  section: { marginTop: space.xl, marginBottom: space.md },
-  list: { gap: space.md },
+  subtitle: { marginTop: -10 },
+  list: { gap: 12, marginTop: -6 },
 });

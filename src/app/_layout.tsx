@@ -4,7 +4,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { LogBox } from "react-native";
 
-import { OnboardingProvider, useOnboarding } from "@/features/onboarding/OnboardingProvider";
+import {
+  OnboardingProvider,
+  useOnboarding,
+} from "@/features/onboarding/OnboardingProvider";
 import { colors } from "@/theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -15,7 +18,7 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
 });
 
 function RootStack() {
-  const { completed, role } = useOnboarding();
+  const { completed, entered, role } = useOnboarding();
 
   const ready = completed !== null;
 
@@ -28,16 +31,33 @@ function RootStack() {
   const landlord = role === "landlord";
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.canvas },
+      }}
+    >
+      <Stack.Protected guard={!completed || !entered}>
+        <Stack.Screen
+          name="door"
+          options={{
+            animation: "none",
+            contentStyle: { backgroundColor: colors.white },
+          }}
+        />
+      </Stack.Protected>
       <Stack.Protected guard={!completed}>
-        <Stack.Screen name="door" options={{ animation: "none", contentStyle: { backgroundColor: colors.white } }} />
         <Stack.Screen
           name="welcome"
-          options={{ animation: "fade", gestureEnabled: false, contentStyle: { backgroundColor: colors.white } }}
+          options={{
+            animation: "fade",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: colors.white },
+          }}
         />
         <Stack.Screen name="onboarding" />
       </Stack.Protected>
-      <Stack.Protected guard={!!completed}>
+      <Stack.Protected guard={!!completed && entered}>
         <Stack.Protected guard={!landlord}>
           <Stack.Screen name="index" options={{ animation: "fade" }} />
           <Stack.Screen name="saved" options={{ animation: "none" }} />
@@ -45,10 +65,19 @@ function RootStack() {
           <Stack.Screen name="home" options={{ animation: "none" }} />
         </Stack.Protected>
         <Stack.Protected guard={landlord}>
-          <Stack.Screen name="landlord/overview" options={{ animation: "fade" }} />
-          <Stack.Screen name="landlord/properties" options={{ animation: "none" }} />
+          <Stack.Screen
+            name="landlord/overview"
+            options={{ animation: "fade" }}
+          />
+          <Stack.Screen
+            name="landlord/properties"
+            options={{ animation: "none" }}
+          />
           <Stack.Screen name="landlord/inbox" options={{ animation: "none" }} />
-          <Stack.Screen name="landlord/activity" options={{ animation: "none" }} />
+          <Stack.Screen
+            name="landlord/activity"
+            options={{ animation: "none" }}
+          />
           <Stack.Screen name="landlord/approvals" />
         </Stack.Protected>
         <Stack.Screen name="profile" options={{ animation: "none" }} />
