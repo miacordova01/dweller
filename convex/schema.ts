@@ -106,6 +106,13 @@ export default defineSchema({
     .index("by_status_neighborhood", ["status", "neighborhood"])
     .index("by_imported_by", ["importedBy"]),
 
+  // Screenshots uploaded for the discovery agent. One row per upload, written
+  // when an import starts, so an upload backs at most one imported listing and
+  // can be deleted with it.
+  discoveryUploads: defineTable({
+    storageId: v.id("_storage"),
+  }).index("by_storage", ["storageId"]),
+
   // A renter's shortlist. Separate from `listings` because two renters
   // can save the same listing with different notes.
   savedListings: defineTable({

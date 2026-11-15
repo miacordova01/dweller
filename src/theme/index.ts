@@ -16,6 +16,8 @@ export const colors = {
   sky: "#A7D8FF",
   blue: "#477CF5",
   mint: "#D9FBE9",
+  hairline: "#E3E6EF",
+  error: "#B3261E",
 } as const;
 
 export function withAlpha(hex: string, alpha: number) {
