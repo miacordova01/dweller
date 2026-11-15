@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors } from "../../theme";
+import { colors, fonts } from "@/theme";
 
 // DESIGN.md: AI is marked by a sparkle on a lavender surface, never by
 // purple alone.
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 0,
   },
-  sparkle: { color: colors.primary, fontSize: 11 },
-  sparkleLarge: { fontSize: 18 },
-  label: { color: colors.ink, fontSize: 12, fontWeight: "500" },
+  sparkle: { color: colors.primary, fontFamily: fonts.regular, fontSize: 11 },
+  sparkleLarge: { fontFamily: fonts.regular, fontSize: 18 },
+  label: { color: colors.ink, fontSize: 12, fontFamily: fonts.medium },
 });

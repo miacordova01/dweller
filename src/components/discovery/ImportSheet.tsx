@@ -25,7 +25,7 @@ import {
   parseDate,
   sourceName,
 } from "../../lib/listings";
-import { colors } from "../../theme";
+import { colors, fonts } from "@/theme";
 import { AiMark } from "./AiMark";
 
 type Phase =
@@ -517,11 +517,11 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: 22,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: colors.ink,
     letterSpacing: -0.4,
   },
-  link: { fontSize: 16, color: colors.blue, fontWeight: "500" },
+  link: { fontSize: 16, color: colors.blue, fontFamily: fonts.medium },
   body: { padding: 20, paddingBottom: 48, gap: 12 },
   loading: { marginTop: 48 },
   intro: {
@@ -530,14 +530,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  introText: { flex: 1, fontSize: 15, lineHeight: 21, color: colors.inkMuted },
+  introText: {
+    flex: 1,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 21,
+    color: colors.inkMuted,
+  },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
   },
-  primaryButtonText: { color: colors.white, fontSize: 16, fontWeight: "500" },
+  primaryButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontFamily: fonts.medium,
+  },
   secondaryButton: {
     backgroundColor: colors.white,
     borderRadius: 14,
@@ -546,9 +556,18 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  secondaryButtonText: { color: colors.ink, fontSize: 16, fontWeight: "500" },
+  secondaryButtonText: {
+    color: colors.ink,
+    fontSize: 16,
+    fontFamily: fonts.medium,
+  },
   pressed: { opacity: 0.7 },
-  hint: { fontSize: 13, lineHeight: 18, color: colors.inkMuted },
+  hint: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.inkMuted,
+  },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -560,7 +579,11 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.hairline,
   },
-  dividerText: { fontSize: 13, color: colors.inkMuted },
+  dividerText: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.inkMuted,
+  },
   input: {
     backgroundColor: colors.white,
     borderRadius: 12,
@@ -568,6 +591,7 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.ink,
   },
@@ -579,7 +603,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.error,
   },
-  errorText: { color: colors.error, fontSize: 14, lineHeight: 20 },
+  errorText: {
+    color: colors.error,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   aiCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -588,8 +617,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
   },
-  aiCardTitle: { fontSize: 16, fontWeight: "600", color: colors.ink },
+  aiCardTitle: { fontSize: 16, fontFamily: fonts.semibold, color: colors.ink },
   aiCardText: {
+    fontFamily: fonts.regular,
     fontSize: 14,
     lineHeight: 20,
     color: colors.inkMuted,
@@ -606,11 +636,20 @@ const styles = StyleSheet.create({
   preview: { height: 180, borderRadius: 12, backgroundColor: colors.canvas },
   fieldRow: { gap: 4 },
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  fieldLabel: { fontSize: 13, fontWeight: "500", color: colors.inkMuted },
-  fieldValue: { fontSize: 16, color: colors.ink, lineHeight: 22 },
+  fieldLabel: {
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.inkMuted,
+  },
+  fieldValue: {
+    fontFamily: fonts.regular,
+    fontSize: 16,
+    color: colors.ink,
+    lineHeight: 22,
+  },
   missingTag: {
     fontSize: 11,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: colors.primary,
     backgroundColor: colors.lavender,
     borderRadius: 6,

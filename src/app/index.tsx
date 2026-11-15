@@ -22,7 +22,7 @@ import {
   parseDate,
   sourceName,
 } from "../lib/listings";
-import { colors } from "../theme";
+import { colors, fonts } from "@/theme";
 
 const emptyForm = {
   title: "",
@@ -285,14 +285,14 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 48, gap: 12 },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: colors.ink,
     letterSpacing: -0.4,
     marginTop: 8,
   },
   form: { gap: 10 },
   field: { gap: 4 },
-  label: { fontSize: 13, fontWeight: "500", color: colors.inkMuted },
+  label: { fontSize: 13, fontFamily: fonts.medium, color: colors.inkMuted },
   input: {
     backgroundColor: colors.white,
     borderRadius: 12,
@@ -300,10 +300,11 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.ink,
   },
-  error: { color: colors.error, fontSize: 14 },
+  error: { color: colors.error, fontFamily: fonts.regular, fontSize: 14 },
   button: {
     backgroundColor: colors.primary,
     borderRadius: 14,
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: colors.white, fontSize: 16, fontWeight: "500" },
+  buttonText: { color: colors.white, fontSize: 16, fontFamily: fonts.medium },
   importEntry: {
     flexDirection: "row",
     alignItems: "center",
@@ -324,14 +325,19 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 8,
   },
-  importTitle: { fontSize: 16, fontWeight: "600", color: colors.ink },
+  importTitle: { fontSize: 16, fontFamily: fonts.semibold, color: colors.ink },
   importSubtitle: {
+    fontFamily: fonts.regular,
     fontSize: 13,
     lineHeight: 18,
     color: colors.inkMuted,
     marginTop: 2,
   },
-  importChevron: { fontSize: 24, color: colors.inkMuted },
+  importChevron: {
+    fontFamily: fonts.regular,
+    fontSize: 24,
+    color: colors.inkMuted,
+  },
   card: {
     backgroundColor: colors.white,
     borderRadius: 16,
@@ -354,9 +360,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   cardText: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: 17, fontWeight: "600", color: colors.ink },
-  cardNeighborhood: { fontSize: 14, color: colors.inkMuted },
-  cardMissing: { fontSize: 12, color: colors.inkMuted },
+  cardTitle: { fontSize: 17, fontFamily: fonts.semibold, color: colors.ink },
+  cardNeighborhood: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.inkMuted,
+  },
+  cardMissing: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.inkMuted,
+  },
   cardRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -365,11 +379,15 @@ const styles = StyleSheet.create({
   },
   cardRent: {
     fontSize: 18,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: colors.ink,
     fontVariant: ["tabular-nums"],
   },
-  cardUnknown: { fontSize: 15, fontWeight: "500", color: colors.inkMuted },
-  cardMeta: { fontSize: 14, color: colors.inkMuted },
+  cardUnknown: {
+    fontSize: 15,
+    fontFamily: fonts.medium,
+    color: colors.inkMuted,
+  },
+  cardMeta: { fontFamily: fonts.regular, fontSize: 14, color: colors.inkMuted },
   empty: { textAlign: "center", color: colors.inkMuted, marginTop: 24 },
 });

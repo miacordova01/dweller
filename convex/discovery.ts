@@ -20,7 +20,7 @@ import {
 // an Instagram or TikTok post, or a link to an ordinary listing page) into a
 // draft row in `listings`, and records each extraction in `agentActions`.
 
-const SCREENSHOT_MODEL = "gpt-6.1-sol";
+const SCREENSHOT_MODEL = "gpt-6-luna";
 const PAGE_MODEL = "gpt-6-luna";
 
 // Every import is a paid OpenAI call, so imports are capped before any fetch
