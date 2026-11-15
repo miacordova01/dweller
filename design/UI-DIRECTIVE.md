@@ -136,8 +136,9 @@ fallback.
 Match panel 4 of reference.png and panel 2 of reference-renter.png.
 
 - Dweller logo centred, generous breathing room
-- Headline in bold Arial, deep ink
-- Supporting copy in muted gray: "Your next place, and everything after."
+- Headline, bold Arial, deep ink, exactly: **Dwell well.**
+  This replaces the older "Find home. Feel at home." wherever it appears.
+- Supporting copy in muted gray, unchanged: "Your next place, and everything after."
 - A San Francisco residential photograph, ideally colourful Victorians,
   occupying the lower portion with a curved or softly shaped top boundary
 - Primary "Get started" in Dweller purple, full width

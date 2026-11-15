@@ -1,0 +1,5 @@
+import { router } from 'expo-router';
+import { Text, View } from 'react-native';
+import { Action,C,Glyph,Panel,Screen,T } from '@/components/DwellerUI';
+// Visual-only reference preview. Never navigate here as proof of a real transaction.
+export default function PaymentSuccess(){return <Screen title="Payment preview"><View style={{alignItems:'center',paddingTop:65,gap:18}}><View style={{width:116,height:116,borderRadius:42,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'}}><Glyph name="checkmark.circle.fill" size={67} color="#14A87D"/></View><Text style={T.h1}>Rent paid!</Text><Text style={[T.muted,{textAlign:'center'}]}>Example confirmation screen — demo only.</Text></View><Panel><Text style={T.label}>Example receipt</Text><Text style={[T.muted,{marginTop:12}]}>123 Valencia St, Unit 2</Text><Text style={[T.muted,{marginTop:12}]}>Amount · $2,400</Text><Text style={[T.muted,{marginTop:12}]}>Status · Sample payment</Text></Panel><Action label="Back to home" blue onPress={()=>router.replace('/home')}/></Screen>}
