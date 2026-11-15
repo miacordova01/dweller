@@ -1,5 +1,5 @@
 import { useMutation } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
@@ -30,11 +30,6 @@ export default function WelcomeHomeScreen() {
   const leaving = useRef(false);
   const savePreferences = useMutation(api.people.saveRenterPreferences);
   const doorSize = Math.round(height * 0.26);
-  const [headlineWidth, setHeadlineWidth] = useState<number | null>(null);
-  const doorShift =
-    headlineWidth === null
-      ? 0
-      : (Math.round(doorSize * 0.82) - headlineWidth) / 2;
 
   const knob = useSharedValue(1);
   const hinge = useSharedValue(0);
@@ -108,9 +103,7 @@ export default function WelcomeHomeScreen() {
       ]}
     >
       <View style={styles.middle}>
-        <View
-          style={[styles.markSlot, { transform: [{ translateX: doorShift }] }]}
-        >
+        <View style={styles.markSlot}>
           <DoorScene
             size={doorSize}
             hinge={hinge}
@@ -120,17 +113,12 @@ export default function WelcomeHomeScreen() {
           />
         </View>
         <Animated.View style={fadeStyle}>
-          <View
-            style={styles.headline}
-            onLayout={(e) => setHeadlineWidth(e.nativeEvent.layout.width)}
+          <Animated.Text
+            entering={FadeInUp.delay(150).duration(450)}
+            style={[type.display, styles.center]}
           >
-            <Animated.Text
-              entering={FadeInUp.delay(150).duration(450)}
-              style={[type.display, styles.center]}
-            >
-              Welcome home.
-            </Animated.Text>
-          </View>
+            Welcome home.
+          </Animated.Text>
           <Animated.Text
             entering={FadeInUp.delay(260).duration(450)}
             style={[type.bodyMuted, styles.center, styles.line]}
@@ -173,7 +161,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   center: { textAlign: "center" },
-  headline: { alignSelf: "center" },
   line: { marginTop: space.sm },
   footer: { paddingHorizontal: space.xl },
   whiteout: { backgroundColor: colors.canvas },

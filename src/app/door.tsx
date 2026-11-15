@@ -155,7 +155,6 @@ export default function DoorScreen() {
             style={[
               {
                 marginTop: doorSize * 0.24,
-                marginLeft: -Math.round(width * 0.135 * 0.075),
               },
               wordmarkStyle,
             ]}
@@ -224,7 +223,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: space.xl,
   },
-  lockup: { alignItems: "flex-start" },
+  lockup: { alignItems: "center" },
   abs: { position: "absolute" },
   skip: { position: "absolute", right: space.xl, padding: space.sm },
 });

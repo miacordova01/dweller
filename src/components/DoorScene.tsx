@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   interpolate,
@@ -75,10 +74,19 @@ export function DoorScene({
   const knobStyle = useAnimatedStyle(() => ({
     transform: [{ scale: knobScale.get() }],
   }));
-  const photoStyle = useAnimatedStyle(() => ({
+  const lightStyle = useAnimatedStyle(() => ({
     opacity: peek.get(),
   }));
+  const haloStyle = useAnimatedStyle(() => ({
+    opacity: peek.get(),
+    transform: [
+      { scale: interpolate(peek.get(), [0, 1], [0.5, 1.1]) + expand.get() * 6 },
+    ],
+  }));
   const sceneStyle = useAnimatedStyle(() => ({
+    opacity:
+      interpolate(hinge.get(), [0, 0.12], [0, 1], "clamp") *
+      interpolate(expand.get(), [0, 0.25], [1, 0], "clamp"),
     transform: [{ scale: interpolate(expand.get(), [0, 1], [1, 9]) }],
   }));
   const frameStyle = useAnimatedStyle(() => ({
@@ -139,7 +147,6 @@ export function DoorScene({
           interiorBox,
           styles.clip,
           { borderTopRightRadius: r, borderBottomRightRadius: r },
-          depthStyle,
           sceneStyle,
         ]}
       >
@@ -154,15 +161,44 @@ export function DoorScene({
           </Defs>
           <Path d={innerLocal} fill="url(#interior)" />
         </Svg>
-        <Animated.View style={[StyleSheet.absoluteFill, photoStyle]}>
-          <Image
-            source={require("@/assets/images/door-interior.jpg")}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            contentPosition={{ left: "40%", top: "35%" }}
-            transition={0}
-          />
+        <Animated.View style={[StyleSheet.absoluteFill, lightStyle]}>
+          <Svg width={innerW} height={2 * r}>
+            <Defs>
+              <RadialGradient id="light" cx="42%" cy="50%" rx="70%" ry="62%">
+                <Stop offset="0" stopColor="#FFFFFF" />
+                <Stop offset="0.6" stopColor="#FFFFFF" />
+                <Stop offset="1" stopColor="#FFFFFF" />
+              </RadialGradient>
+            </Defs>
+            <Path d={innerLocal} fill="url(#light)" />
+          </Svg>
         </Animated.View>
+      </Animated.View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.abs,
+          {
+            left: jamb + innerW * 0.42 - H,
+            top: H / 2 - H,
+            width: 2 * H,
+            height: 2 * H,
+          },
+          haloStyle,
+        ]}
+      >
+        <Svg width={2 * H} height={2 * H}>
+          <Defs>
+            <RadialGradient id="halo" cx="50%" cy="50%" rx="50%" ry="50%">
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity={1} />
+              <Stop offset="0.35" stopColor="#FFFFFF" stopOpacity={0.85} />
+              <Stop offset="0.7" stopColor="#FFFFFF" stopOpacity={0.35} />
+              <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Ellipse cx={H} cy={H} rx={H} ry={H} fill="url(#halo)" />
+        </Svg>
       </Animated.View>
 
       <Animated.View
