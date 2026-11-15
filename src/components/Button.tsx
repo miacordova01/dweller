@@ -1,20 +1,18 @@
-import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, type PressableProps } from "react-native";
+import { Pressable, StyleSheet, Text, type PressableProps } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-import { colors, radius, space, type, withAlpha } from "@/theme";
+import { colors, radius, space, type } from "@/theme";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-type Variant = "primary" | "secondary" | "plain";
+type Variant = "primary" | "secondary";
 
 type ButtonProps = Omit<PressableProps, "children" | "style"> & {
   label: string;
   variant?: Variant;
-  icon?: ReactNode;
 };
 
-export function Button({ label, variant = "primary", icon, onPressIn, onPressOut, disabled, ...rest }: ButtonProps) {
+export function Button({ label, variant = "primary", onPressIn, onPressOut, disabled, ...rest }: ButtonProps) {
   const pressed = useSharedValue(0);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -38,11 +36,6 @@ export function Button({ label, variant = "primary", icon, onPressIn, onPressOut
       style={[styles.base, styles[variant], animatedStyle]}
       {...rest}
     >
-      {icon && (
-        <View style={styles.icon} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          {icon}
-        </View>
-      )}
       <Text style={[type.button, styles.label, { color: variant === "primary" ? colors.white : colors.ink }]}>
         {label}
       </Text>
@@ -56,18 +49,14 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     borderRadius: radius.md,
     paddingHorizontal: space.lg,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: space.sm,
   },
   primary: { backgroundColor: colors.primary },
   secondary: {
     backgroundColor: colors.white,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: withAlpha(colors.inkMuted, 0.25),
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
-  plain: { minHeight: 44 },
-  icon: { width: 22, alignItems: "center" },
   label: { flexShrink: 1, textAlign: "center" },
 });
