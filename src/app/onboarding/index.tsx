@@ -21,14 +21,14 @@ export default function IntentScreen() {
         testID="role-renter"
         title="Find a home"
         description="Discover rentals, schedule tours, and manage your next move"
-        symbol={{ ios: "house", android: "home" }}
+        symbol={{ ios: "house", android: "home", web: "home" }}
         onPress={() => choose("renter")}
       />
       <ChoiceCard
         testID="role-landlord"
         title="Manage my properties"
         description="List rentals, manage tenants, and automate everyday tasks"
-        symbol={{ ios: "building.2", android: "apartment" }}
+        symbol={{ ios: "building.2", android: "apartment", web: "apartment" }}
         onPress={() => choose("landlord")}
       />
     </StepScaffold>

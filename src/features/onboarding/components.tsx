@@ -53,7 +53,7 @@ export function StepScaffold({
           style={styles.back}
         >
           <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
+            name={{ ios: "chevron.left", android: "arrow_back", web: "arrow_back" }}
             size={20}
             tintColor={colors.ink}
           />
@@ -89,7 +89,7 @@ export function ChoiceCard({
 }: {
   title: string;
   description: string;
-  symbol: { ios: "house" | "building.2"; android: "home" | "apartment" };
+  symbol: { ios: "house" | "building.2"; android: "home" | "apartment"; web: "home" | "apartment" };
   onPress: () => void;
   testID?: string;
 }) {

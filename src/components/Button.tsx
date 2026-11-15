@@ -43,7 +43,9 @@ export function Button({ label, variant = "primary", icon, onPressIn, onPressOut
           {icon}
         </View>
       )}
-      <Text style={[type.button, { color: variant === "primary" ? colors.white : colors.ink }]}>{label}</Text>
+      <Text style={[type.button, styles.label, { color: variant === "primary" ? colors.white : colors.ink }]}>
+        {label}
+      </Text>
     </AnimatedPressable>
   );
 }
@@ -51,6 +53,7 @@ export function Button({ label, variant = "primary", icon, onPressIn, onPressOut
 const styles = StyleSheet.create({
   base: {
     minHeight: 52,
+    paddingVertical: space.sm,
     borderRadius: radius.md,
     paddingHorizontal: space.lg,
     flexDirection: "row",
@@ -66,4 +69,5 @@ const styles = StyleSheet.create({
   },
   plain: { minHeight: 44 },
   icon: { width: 22, alignItems: "center" },
+  label: { flexShrink: 1, textAlign: "center" },
 });

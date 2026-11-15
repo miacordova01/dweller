@@ -69,6 +69,7 @@ export default function WelcomeScreen() {
               icon={
                 <SymbolView
                   name={{ ios: "apple.logo" }}
+                  fallback={<Text style={styles.glyph}>A</Text>}
                   size={20}
                   tintColor={colors.ink}
                 />
@@ -88,7 +89,7 @@ export default function WelcomeScreen() {
               label="Continue with email"
               variant="plain"
               accessibilityHint="Coming soon"
-              icon={<SymbolView name={{ ios: "envelope", android: "mail" }} size={20} tintColor={colors.ink} />}
+              icon={<SymbolView name={{ ios: "envelope", android: "mail", web: "mail" }} size={20} tintColor={colors.ink} />}
             />
           </Animated.View>
         </View>
