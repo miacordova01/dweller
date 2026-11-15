@@ -36,6 +36,14 @@ function RenterQuestions() {
           onToggle={(o) => updateRenter({ moveIn: toggleSingle(renter.moveIn, o) })}
         />
       </Question>
+      <Question label="Bedrooms">
+        <ChipGroup
+          testIDPrefix="bedrooms"
+          options={["Studio", "1", "2", "3+"]}
+          selected={single(renter.bedrooms)}
+          onToggle={(o) => updateRenter({ bedrooms: toggleSingle(renter.bedrooms, o) })}
+        />
+      </Question>
       <Question label="Looking for">
         <ChipGroup
           testIDPrefix="space"

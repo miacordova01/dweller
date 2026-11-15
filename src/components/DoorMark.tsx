@@ -78,6 +78,10 @@ export function DoorMark({
     opacity: interpolate(hinge?.get() ?? 0, [0, 0.15, 1], [0, 0.6, 1], "clamp"),
   }));
 
+  const frameShadowStyle = useAnimatedStyle(() => ({
+    shadowOpacity: lit ? interpolate(hinge?.get() ?? 0, [0, 0.5], [0, 0.16], "clamp") : 0,
+  }));
+
   const knobStyle = useAnimatedStyle(() => ({
     transform: [{ scale: knobScale?.get() ?? 1 }],
   }));
@@ -112,7 +116,7 @@ export function DoorMark({
         </Animated.View>
       )}
       <Animated.View style={[StyleSheet.absoluteFill, frameStyle]}>
-        <View
+        <Animated.View
           style={[
             StyleSheet.absoluteFill,
             {
@@ -123,6 +127,7 @@ export function DoorMark({
               borderBottomRightRadius: height / 2,
             },
             lit && styles.frameShadow,
+            frameShadowStyle,
           ]}
         />
         <Animated.View
@@ -184,7 +189,6 @@ const styles = StyleSheet.create({
   clip: { overflow: "hidden" },
   frameShadow: {
     shadowColor: colors.ink,
-    shadowOpacity: 0.16,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 12 },
   },

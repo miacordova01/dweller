@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, type MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { activeLease, currentLandlord, currentRenter } from "./people";
 import schema from "./schema";
 
@@ -49,12 +49,16 @@ export async function confirmBooking(
   slot: number | undefined,
 ) {
   const booking = await ctx.db.get("ticketBookings", bookingId);
-  if (booking === null) throw new ConvexError("That repair booking no longer exists.");
+  if (booking === null)
+    throw new ConvexError("That repair booking no longer exists.");
   const ticket = await ctx.db.get("maintenanceTickets", booking.ticketId);
   if (ticket === null || ticket.landlordId !== landlordId) {
     throw new ConvexError("That repair isn't one of yours.");
   }
-  if (booking.status !== "proposed" && booking.status !== "awaiting_landlord_approval") {
+  if (
+    booking.status !== "proposed" &&
+    booking.status !== "awaiting_landlord_approval"
+  ) {
     throw new ConvexError(`That repair booking is already ${booking.status}.`);
   }
   const now = Date.now();
@@ -80,7 +84,10 @@ export async function cancelBooking(
   if (ticket === null || ticket.landlordId !== landlordId) {
     throw new ConvexError("That repair isn't one of yours.");
   }
-  if (booking.status === "proposed" || booking.status === "awaiting_landlord_approval") {
+  if (
+    booking.status === "proposed" ||
+    booking.status === "awaiting_landlord_approval"
+  ) {
     await ctx.db.patch("ticketBookings", bookingId, { status: "cancelled" });
   }
 }
@@ -96,7 +103,8 @@ export const create = mutation({
   returns: v.id("maintenanceTickets"),
   handler: async (ctx, args) => {
     const renter = await currentRenter(ctx);
-    if (renter === null) throw new ConvexError("Sign in as a renter to report a repair.");
+    if (renter === null)
+      throw new ConvexError("Sign in as a renter to report a repair.");
     const title = args.title.trim();
     const description = args.description.trim();
     if (title === "" || description === "") {
@@ -119,7 +127,8 @@ export const setStatus = mutation({
   returns: v.null(),
   handler: async (ctx, { ticketId, status }) => {
     const landlord = await currentLandlord(ctx);
-    if (landlord === null) throw new ConvexError("Sign in as a landlord to update repairs.");
+    if (landlord === null)
+      throw new ConvexError("Sign in as a landlord to update repairs.");
     const ticket = await ctx.db.get("maintenanceTickets", ticketId);
     if (ticket === null || ticket.landlordId !== landlord.userId) {
       throw new ConvexError("That repair isn't one of yours.");
@@ -130,5 +139,28 @@ export const setStatus = mutation({
       resolvedAt: done ? (ticket.resolvedAt ?? Date.now()) : undefined,
     });
     return null;
+  },
+});
+
+// The current renter's repair requests, newest first, with photo URLs.
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const renter = await currentRenter(ctx);
+    if (renter === null) return [];
+    const tickets = await ctx.db
+      .query("maintenanceTickets")
+      .withIndex("by_tenant", (q) => q.eq("tenantId", renter.userId))
+      .order("desc")
+      .take(20);
+    return await Promise.all(
+      tickets.map(async (ticket) => {
+        const storageId = ticket.photoStorageIds[0];
+        return {
+          ...ticket,
+          photoUrl: storageId ? await ctx.storage.getUrl(storageId) : null,
+        };
+      }),
+    );
   },
 });

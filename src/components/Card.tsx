@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, radius, space, withAlpha } from "@/theme";
+import { colors, radius, shadow, space } from "@/theme";
 
 export function Card({
   children,
@@ -33,9 +33,9 @@ export function Card({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
-    borderRadius: radius.md + 2,
+    borderRadius: radius.card,
     padding: space.lg,
-    boxShadow: `0 4px 16px ${withAlpha(colors.ink, 0.06)}, 0 1px 2px ${withAlpha(colors.ink, 0.04)}`,
+    boxShadow: shadow.card,
   },
   pressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
 });

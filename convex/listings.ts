@@ -1,8 +1,14 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
-import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
-import { listingSource } from "./schema";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type QueryCtx,
+} from "./_generated/server";
+import { discoverFilters, listingSource } from "./schema";
+import type { Infer } from "convex/values";
 
 const FEED_LIMIT = 100;
 
@@ -17,7 +23,8 @@ async function withPhotoUrls(ctx: QueryCtx, listings: Doc<"listings">[]) {
       return {
         ...listing,
         photoUrl:
-          listing.photoUrls[0] ?? (storageId ? await ctx.storage.getUrl(storageId) : null),
+          listing.photoUrls[0] ??
+          (storageId ? await ctx.storage.getUrl(storageId) : null),
       };
     }),
   );
@@ -35,16 +42,98 @@ export const list = query({
   },
 });
 
+export type DiscoverFilters = Infer<typeof discoverFilters>;
+
+const SHOWN_STATUSES = ["active", "leased"] as const;
+
+async function dwellerListings(ctx: QueryCtx) {
+  return await ctx.db
+    .query("listings")
+    .withIndex("by_source", (q) => q.eq("source", "dweller"))
+    .order("desc")
+    .filter((q) => q.neq(q.field("status"), "draft"))
+    .take(FEED_LIMIT);
+}
+
+// The one filtering implementation behind the Discover feed and the
+// assistant's findListings. Neighborhoods match loosely ("Mission" finds
+// "Mission District"), then read through by_status_neighborhood.
+export async function findDiscoverable(
+  ctx: QueryCtx,
+  filters: DiscoverFilters,
+) {
+  const wanted = (filters.neighborhoods ?? [])
+    .map((n) => n.trim().toLowerCase())
+    .filter(Boolean);
+  let listings: Doc<"listings">[];
+  if (wanted.length === 0) {
+    listings = await dwellerListings(ctx);
+  } else {
+    const known = new Set(
+      (await dwellerListings(ctx)).map((l) => l.neighborhood),
+    );
+    const names = [...known].filter((name) => {
+      const lower = name.toLowerCase();
+      return wanted.some((w) => lower.includes(w) || w.includes(lower));
+    });
+    const perNeighborhood = await Promise.all(
+      names.flatMap((neighborhood) =>
+        SHOWN_STATUSES.map((status) =>
+          ctx.db
+            .query("listings")
+            .withIndex("by_status_neighborhood", (q) =>
+              q.eq("status", status).eq("neighborhood", neighborhood),
+            )
+            .filter((q) => q.eq(q.field("source"), "dweller"))
+            .take(FEED_LIMIT),
+        ),
+      ),
+    );
+    listings = perNeighborhood
+      .flat()
+      .sort((a, b) => b._creationTime - a._creationTime);
+  }
+  return listings
+    .filter(
+      (l) =>
+        filters.maxRentCents === undefined ||
+        l.rentMonthlyCents <= filters.maxRentCents,
+    )
+    .filter(
+      (l) =>
+        filters.minBedrooms === undefined || l.bedrooms >= filters.minBedrooms,
+    )
+    .filter(
+      (l) =>
+        filters.maxBedrooms === undefined || l.bedrooms <= filters.maxBedrooms,
+    )
+    .filter(
+      (l) =>
+        filters.availableBy === undefined ||
+        (l.availableFrom ?? 0) <= filters.availableBy,
+    )
+    .slice(0, FEED_LIMIT);
+}
+
 export const discover = query({
+  args: discoverFilters.fields,
+  handler: async (ctx, filters) => {
+    return await withPhotoUrls(ctx, await findDiscoverable(ctx, filters));
+  },
+});
+
+export const neighborhoods = query({
   args: {},
+  returns: v.array(v.string()),
   handler: async (ctx) => {
-    const listings = await ctx.db
-      .query("listings")
-      .withIndex("by_source", (q) => q.eq("source", "dweller"))
-      .order("desc")
-      .filter((q) => q.neq(q.field("status"), "draft"))
-      .take(FEED_LIMIT);
-    return await withPhotoUrls(ctx, listings);
+    const listings = await dwellerListings(ctx);
+    return [
+      ...new Set(
+        listings
+          .filter((l) => l.status === "active")
+          .map((l) => l.neighborhood),
+      ),
+    ].sort();
   },
 });
 
@@ -61,7 +150,10 @@ export const myFinds = query({
         .withIndex("by_imported_by", (q) => q.eq("importedBy", userId))
         .order("desc")
         .filter((q) =>
-          q.and(q.neq(q.field("source"), "dweller"), q.neq(q.field("status"), "draft")),
+          q.and(
+            q.neq(q.field("source"), "dweller"),
+            q.neq(q.field("status"), "draft"),
+          ),
         )
         .take(FEED_LIMIT);
       return await withPhotoUrls(ctx, listings);
@@ -108,7 +200,10 @@ export const add = mutation({
     for (const field of ["title", "address", "neighborhood", "city"] as const) {
       if (listing[field] === "") throw new ConvexError(`${field} is required.`);
     }
-    if (!Number.isInteger(listing.rentMonthlyCents) || listing.rentMonthlyCents < 0) {
+    if (
+      !Number.isInteger(listing.rentMonthlyCents) ||
+      listing.rentMonthlyCents < 0
+    ) {
       throw new ConvexError("rentMonthlyCents must be a non-negative integer.");
     }
     for (const field of ["bedrooms", "bathrooms"] as const) {
@@ -116,7 +211,10 @@ export const add = mutation({
         throw new ConvexError(`${field} must be a non-negative number.`);
       }
     }
-    if (listing.availableFrom !== undefined && !Number.isFinite(listing.availableFrom)) {
+    if (
+      listing.availableFrom !== undefined &&
+      !Number.isFinite(listing.availableFrom)
+    ) {
       throw new ConvexError("availableFrom must be a timestamp.");
     }
     const trimmedPhotoUrl = photoUrl?.trim();

@@ -1,73 +1,44 @@
 import { useQuery } from "convex/react";
 import { Image } from "expo-image";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "../../convex/_generated/api";
+import { BellButton } from "@/components/BellButton";
 import { Card } from "@/components/Card";
 import { Chip } from "@/components/Chip";
 import { Icon } from "@/components/Icon";
 import { QuickAction } from "@/components/QuickAction";
-import { Wordmark } from "@/components/Wordmark";
+import { TopBar } from "@/components/TopBar";
 import { formatRent } from "@/lib/listings";
-import { demoRenter } from "@/lib/renter";
-import { colors, fonts, space, type } from "@/theme";
-
-const DAY = 24 * 60 * 60 * 1000;
-
-function nextSaturdayAt2pm(now: number) {
-  const date = new Date(now);
-  date.setHours(14, 0, 0, 0);
-  date.setDate(date.getDate() + ((6 - date.getDay() + 7) % 7 || 7));
-  return date.getTime();
-}
-
-function addMonths(ms: number, months: number) {
-  const date = new Date(ms);
-  date.setUTCMonth(date.getUTCMonth() + months);
-  return date.getTime();
-}
-
-const shortDate = (ms: number) =>
-  new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-const longDate = (ms: number) =>
-  new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+import { demoLease, demoRenter, longDate, nextTourAt, shortDate, tourLabel } from "@/lib/renter";
+import { colors, fonts, radius, space, type } from "@/theme";
 
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const listings = useQuery(api.listings.discover);
+  const listings = useQuery(api.listings.discover, {});
   const [now] = useState(() => Date.now());
 
   const homes = (listings ?? []).filter((listing) => listing.photoUrl);
   const tourListing = homes[0];
   const leaseListing = homes[1];
 
-  const tourAt = nextSaturdayAt2pm(now);
-  const today = new Date(now);
-  const leaseStart = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1);
-  const leaseEnd = addMonths(leaseStart, leaseListing?.leaseTermMonths ?? 12) - DAY;
-  const rentDue = addMonths(leaseStart, 1);
+  const tourAt = nextTourAt(now);
+  const lease = demoLease(now, leaseListing?.leaseTermMonths);
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.xxl }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.md }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.topBar}>
-          <Wordmark fontSize={28} />
-          <Pressable
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
-            onPress={() => Alert.alert("Notifications", "You're all caught up.")}
-          >
-            <Icon name={{ ios: "bell", android: "notifications", web: "notifications" }} size={22} />
-          </Pressable>
-        </View>
+        <TopBar
+          right={
+            <BellButton unread accessibilityLabel="Notifications, unread" onPress={() => router.navigate("/activity")} />
+          }
+        />
 
         <View style={styles.greeting}>
           <Text style={type.display}>Hi {demoRenter.name},</Text>
@@ -86,7 +57,7 @@ export default function Home() {
             testID="quick-discover"
             icon={{ ios: "magnifyingglass", android: "search", web: "search" }}
             label="Discover"
-            onPress={() => router.push("/")}
+            onPress={() => router.navigate("/")}
           />
           <QuickAction
             testID="quick-repair"
@@ -106,7 +77,7 @@ export default function Home() {
           <ActivityIndicator color={colors.inkMuted} style={styles.loading} />
         ) : (
           <>
-            <Text style={[type.heading, styles.sectionTitle]}>Upcoming</Text>
+            <Text style={[type.section, styles.sectionTitle]}>Upcoming</Text>
             {tourListing ? (
               <Card
                 testID="upcoming-tour"
@@ -120,11 +91,7 @@ export default function Home() {
                   <Text style={styles.cardTitle} numberOfLines={1}>
                     Tour at {tourListing.address}
                   </Text>
-                  <Text style={type.caption}>
-                    {new Date(tourAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                    {" · "}
-                    {new Date(tourAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                  </Text>
+                  <Text style={type.caption}>{tourLabel(tourAt)}</Text>
                 </View>
                 <Icon name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" }} size={14} color={colors.inkMuted} />
               </Card>
@@ -133,7 +100,7 @@ export default function Home() {
             )}
 
             <View style={[styles.sectionHeader, styles.sectionTitle]}>
-              <Text style={type.heading}>My Lease</Text>
+              <Text style={type.section}>My Lease</Text>
               {leaseListing && <Chip label="Active" tone="mint" />}
             </View>
             {leaseListing ? (
@@ -143,7 +110,7 @@ export default function Home() {
                   <View style={styles.flex}>
                     <Text style={styles.cardTitle}>{leaseListing.address}</Text>
                     <Text style={type.caption}>
-                      {longDate(leaseStart)} – {longDate(leaseEnd)}
+                      {longDate(lease.start)} – {longDate(lease.end)}
                     </Text>
                   </View>
                 </View>
@@ -153,7 +120,7 @@ export default function Home() {
                     <Text style={type.caption}>Next rent</Text>
                     <Text style={styles.rent}>{formatRent(leaseListing.rentMonthlyCents)}</Text>
                   </View>
-                  <Text style={type.caption}>Due {shortDate(rentDue)}</Text>
+                  <Text style={type.caption}>Due {shortDate(lease.rentDue)}</Text>
                 </View>
               </Card>
             ) : (
@@ -168,21 +135,20 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingHorizontal: 20 },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  content: { paddingHorizontal: 20, paddingBottom: space.xxl },
   greeting: { marginTop: space.xl, gap: space.xs },
   actions: { flexDirection: "row", gap: space.md, marginTop: space.xl },
   loading: { marginTop: space.xxl },
   sectionTitle: { marginTop: space.xl, marginBottom: space.md },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   tourCard: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md },
-  thumb: { width: 76, height: 76, borderRadius: 12 },
+  thumb: { width: 76, height: 76, borderRadius: radius.sm },
   tourText: { flex: 1, gap: 6 },
-  cardTitle: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20, color: colors.ink },
+  cardTitle: { ...fonts.bold, fontSize: 15, lineHeight: 20, color: colors.ink },
   leaseCard: { padding: 0 },
   leaseRow: { flexDirection: "row", gap: space.md, padding: space.lg },
   flex: { flex: 1, gap: 2 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.hairline },
   rentRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", padding: space.lg },
-  rent: { fontFamily: fonts.semibold, fontSize: 24, lineHeight: 30, color: colors.ink, fontVariant: ["tabular-nums"] },
+  rent: { ...fonts.bold, fontSize: 24, lineHeight: 30, color: colors.ink, fontVariant: ["tabular-nums"] },
 });

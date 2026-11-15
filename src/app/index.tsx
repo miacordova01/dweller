@@ -1,10 +1,9 @@
 import { useMutation, useQuery } from "convex/react";
-import { Image } from "expo-image";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,496 +11,315 @@ import {
 } from "react-native";
 
 import { api } from "../../convex/_generated/api";
-import type { FunctionReturnType } from "convex/server";
-import { ImportSheet } from "../components/discovery/ImportSheet";
-import { AiMark } from "../components/discovery/AiMark";
+import { Action, C, Glyph, Screen, T } from "@/components/DwellerUI";
+import { EmptyState } from "@/components/EmptyState";
+import { FilterSheet } from "@/components/FilterSheet";
+import { ListingCard } from "@/components/ListingCard";
 import {
-  formatBaths,
-  formatBeds,
-  formatRent,
-  parseDate,
-  sourceName,
-} from "../lib/listings";
-import { Button } from "../components/Button";
-import { DoorMark } from "../components/DoorMark";
-import { colors, fonts, radius, space, type } from "@/theme";
+  activeCount,
+  bedroomLabel,
+  moveInLabel,
+  priceLabel,
+  summary,
+  type DiscoverFilters,
+} from "@/lib/filters";
+import { listingMeta, listingPlace, listingRent } from "@/lib/listings";
+import { useSavedListings } from "@/lib/saved";
+import { fonts } from "@/theme";
 
-const emptyForm = {
-  title: "",
-  address: "",
-  neighborhood: "",
-  city: "",
-  rentMonthly: "",
-  bedrooms: "",
-  bathrooms: "",
-  availableFrom: "",
-  photoUrl: "",
-};
+function clean(filters: DiscoverFilters): DiscoverFilters {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined),
+  ) as DiscoverFilters;
+}
 
-type FormField = keyof typeof emptyForm;
-
-const fields: {
-  key: FormField;
-  label: string;
-  placeholder: string;
-  numeric?: boolean;
-}[] = [
-  { key: "title", label: "Title", placeholder: "Bright room with bay window" },
-  { key: "address", label: "Address", placeholder: "123 Valencia St" },
-  {
-    key: "neighborhood",
-    label: "Neighborhood",
-    placeholder: "Mission District",
-  },
-  { key: "city", label: "City", placeholder: "San Francisco" },
-  {
-    key: "rentMonthly",
-    label: "Rent per month ($)",
-    placeholder: "2200",
-    numeric: true,
-  },
-  { key: "bedrooms", label: "Bedrooms", placeholder: "1", numeric: true },
-  { key: "bathrooms", label: "Bathrooms", placeholder: "1", numeric: true },
-  { key: "availableFrom", label: "Available from", placeholder: "2026-12-01" },
-  {
-    key: "photoUrl",
-    label: "Photo URL (optional)",
-    placeholder: "https://...",
-  },
-];
-
-type FeedListing = FunctionReturnType<typeof api.listings.discover>[number];
-
-type Feed = "discover" | "finds";
-
-const feeds: { key: Feed; label: string }[] = [
-  { key: "discover", label: "Discover" },
-  { key: "finds", label: "My finds" },
-];
-
-function FeedSwitch({
-  value,
-  onChange,
+function FilterPill({
+  icon,
+  label,
+  active = false,
+  location = false,
+  onPress,
 }: {
-  value: Feed;
-  onChange: (feed: Feed) => void;
+  icon: string;
+  label: string;
+  active?: boolean;
+  location?: boolean;
+  onPress: () => void;
 }) {
   return (
-    <View style={styles.segmented} accessibilityRole="tablist">
-      {feeds.map((feed) => {
-        const selected = feed.key === value;
-        return (
-          <Pressable
-            key={feed.key}
-            testID={`feed-${feed.key}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            style={({ pressed }) => [
-              styles.segment,
-              selected && styles.segmentSelected,
-              pressed && !selected && styles.segmentPressed,
-            ]}
-            onPress={() => onChange(feed.key)}
-          >
-            <Text
-              style={[
-                styles.segmentLabel,
-                selected && styles.segmentLabelSelected,
-              ]}
-            >
-              {feed.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function ListingCard({ listing }: { listing: FeedListing }) {
-  const imported = listing.source !== "dweller";
-  const missing = new Set(listing.missingFields);
-  const place = [listing.neighborhood, listing.city].filter(Boolean).join(", ");
-  return (
-    <View style={[styles.card, imported && styles.importedCard]}>
-      {imported && (
-        <View style={styles.sourceRow}>
-          <AiMark label={`Imported from ${sourceName(listing.source)}`} />
-          {missing.size > 0 && (
-            <Text style={styles.cardMissing}>
-              {missing.size} detail{missing.size === 1 ? "" : "s"} missing
-            </Text>
-          )}
-        </View>
-      )}
-      <View style={styles.cardBody}>
-        {imported && listing.photoUrl && (
-          <Image
-            source={{ uri: listing.photoUrl }}
-            style={styles.cardPhoto}
-            contentFit="cover"
-            contentPosition="top"
-          />
-        )}
-        <View style={styles.cardText}>
-          <Text style={styles.cardTitle}>{listing.title}</Text>
-          <Text style={styles.cardNeighborhood}>
-            {place || "Location unknown"}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.cardRow}>
-        <Text
-          style={[
-            styles.cardRent,
-            missing.has("rentMonthlyCents") && styles.cardUnknown,
-          ]}
-        >
-          {missing.has("rentMonthlyCents")
-            ? "Rent unknown"
-            : `${formatRent(listing.rentMonthlyCents)}/mo`}
-        </Text>
-        <Text style={styles.cardMeta}>
-          {[
-            missing.has("bedrooms") ? null : formatBeds(listing.bedrooms),
-            missing.has("bathrooms") ? null : formatBaths(listing.bathrooms),
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function ImportEntry({ onPress }: { onPress: () => void }) {
-  return (
     <Pressable
-      testID="open-import"
-      accessibilityRole="button"
-      accessibilityLabel="Add from link or screenshot"
-      style={({ pressed }) => [
-        styles.importEntry,
-        pressed && styles.buttonPressed,
-      ]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      style={({ pressed }) => [
+        styles.pill,
+        location && styles.pillLocation,
+        active && styles.pillActive,
+        pressed && styles.pressed,
+      ]}
     >
-      <AiMark size="large" />
-      <View style={styles.cardText}>
-        <Text style={styles.importTitle}>Add from link or screenshot</Text>
-        <Text style={styles.importSubtitle}>
-          Turn an Instagram, TikTok or Craigslist post into a listing card
-        </Text>
-      </View>
-      <Text style={styles.importChevron}>›</Text>
+      <Glyph name={icon} size={15} color={active ? C.purple : C.ink} />
+      <Text
+        style={[styles.pillLabel, active && styles.pillLabelActive]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      {location && (
+        <Glyph
+          name="chevron.down"
+          size={11}
+          color={active ? C.purple : C.ink}
+        />
+      )}
     </Pressable>
   );
 }
 
-function FindsEmpty({ onImport }: { onImport: () => void }) {
-  return (
-    <View style={styles.findsEmpty}>
-      <DoorMark size={56} />
-      <Text style={styles.findsEmptyTitle}>No finds yet</Text>
-      <Text style={styles.findsEmptyBody}>
-        This is where listings you bring in from Instagram, TikTok or a link
-        will appear.
-      </Text>
-      <Button
-        testID="empty-import"
-        label="Import a listing"
-        onPress={onImport}
-      />
-    </View>
+export default function Discover() {
+  const preferences = useQuery(api.people.renterPreferences);
+  const filters = clean(preferences?.filters ?? {});
+  const listings = useQuery(
+    api.listings.discover,
+    preferences === undefined ? "skip" : filters,
   );
-}
-
-function AddListingForm() {
-  const addListing = useMutation(api.listings.add);
-  const [form, setForm] = useState(emptyForm);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  async function submit() {
-    const missing = fields.find(
-      (f) => f.key !== "photoUrl" && form[f.key].trim() === "",
+  const saveFilters = useMutation(
+    api.people.saveDiscoverFilters,
+  ).withOptimisticUpdate((store, { filters: next }) => {
+    const current = store.getQuery(api.people.renterPreferences, {});
+    if (current === undefined) return;
+    store.setQuery(
+      api.people.renterPreferences,
+      {},
+      { amenities: [], ...current, filters: next },
     );
-    if (missing) {
-      setError(`${missing.label} is required.`);
-      return;
-    }
-    const rentMonthly = Number(form.rentMonthly);
-    const bedrooms = Number(form.bedrooms);
-    const bathrooms = Number(form.bathrooms);
-    if (
-      [rentMonthly, bedrooms, bathrooms].some(
-        (n) => !Number.isFinite(n) || n < 0,
+  });
+  const { isSaved, toggle } = useSavedListings();
+  const [query, setQuery] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [now] = useState(() => Date.now());
+
+  const applied = activeCount(filters);
+  const needle = query.trim().toLowerCase();
+  const shown = needle
+    ? listings?.filter((l) =>
+        [listingPlace(l), listingMeta(l), listingRent(l), l.title]
+          .join(" ")
+          .toLowerCase()
+          .includes(needle),
       )
-    ) {
-      setError("Rent, bedrooms, and bathrooms must be non-negative numbers.");
-      return;
-    }
-    const availableFrom = parseDate(form.availableFrom);
-    if (availableFrom === null) {
-      setError("Available from must be a date like 2026-12-01.");
-      return;
-    }
-    setError(null);
-    setSaving(true);
-    try {
-      await addListing({
-        title: form.title.trim(),
-        address: form.address.trim(),
-        neighborhood: form.neighborhood.trim(),
-        city: form.city.trim(),
-        rentMonthlyCents: Math.round(rentMonthly * 100),
-        bedrooms,
-        bathrooms,
-        availableFrom,
-        photoUrl: form.photoUrl.trim() || undefined,
-      });
-      setForm(emptyForm);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save the listing.");
-    } finally {
-      setSaving(false);
-    }
+    : listings;
+  const hoods = filters.neighborhoods ?? [];
+
+  function apply(next: DiscoverFilters) {
+    setSheetOpen(false);
+    saveFilters({ filters: clean(next) }).catch(() => {});
   }
 
   return (
-    <View style={styles.form}>
-      <Text style={styles.sectionTitle}>List your place</Text>
-      {fields.map((f) => (
-        <View key={f.key} style={styles.field}>
-          <Text style={styles.label}>{f.label}</Text>
-          <TextInput
-            testID={`input-${f.key}`}
-            accessibilityLabel={f.label}
-            style={styles.input}
-            value={form[f.key]}
-            placeholder={f.placeholder}
-            placeholderTextColor={colors.inkMuted}
-            keyboardType={f.numeric ? "decimal-pad" : "default"}
-            autoCapitalize={f.key === "photoUrl" ? "none" : "sentences"}
-            onChangeText={(text) =>
-              setForm((prev) => ({ ...prev, [f.key]: text }))
-            }
-          />
-        </View>
-      ))}
-      {error && <Text style={styles.error}>{error}</Text>}
-      <Pressable
-        testID="submit-listing"
-        accessibilityRole="button"
-        style={({ pressed }) => [
-          styles.button,
-          (pressed || saving) && styles.buttonPressed,
-        ]}
-        onPress={submit}
-        disabled={saving}
+    <Screen tab="Discover">
+      <View style={styles.search}>
+        <Glyph name="magnifyingglass" size={18} color={C.muted} />
+        <TextInput
+          testID="discover-search"
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search homes, neighborhoods..."
+          placeholderTextColor={C.muted}
+          style={styles.searchInput}
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+          accessibilityLabel="Search homes and neighborhoods"
+        />
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.pillScroller}
+        contentContainerStyle={styles.pills}
       >
-        <Text style={styles.buttonText}>
-          {saving ? "Saving..." : "Add listing"}
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
+        <FilterPill
+          location
+          icon="mappin"
+          label={
+            hoods.length === 0
+              ? "San Francisco"
+              : hoods.length === 1
+                ? hoods[0]
+                : `${hoods[0]} +${hoods.length - 1}`
+          }
+          active={hoods.length > 0}
+          onPress={() => setSheetOpen(true)}
+        />
+        <FilterPill
+          icon="slider.horizontal.3"
+          label={applied ? `Filters · ${applied}` : "Filters"}
+          active={applied > 0}
+          onPress={() => setSheetOpen(true)}
+        />
+        <FilterPill
+          icon="person.2"
+          label={
+            bedroomLabel(filters)
+              ? bedroomLabel(filters) === "Studio"
+                ? "Studio"
+                : `${bedroomLabel(filters)} bd`
+              : "Any"
+          }
+          active={bedroomLabel(filters) !== undefined}
+          onPress={() => setSheetOpen(true)}
+        />
+        <FilterPill
+          icon="dollarsign.circle"
+          label={priceLabel(filters) ?? "Price"}
+          active={filters.maxRentCents !== undefined}
+          onPress={() => setSheetOpen(true)}
+        />
+        <FilterPill
+          icon="calendar"
+          label={moveInLabel(filters) ?? "Move-in"}
+          active={filters.availableBy !== undefined}
+          onPress={() => setSheetOpen(true)}
+        />
+      </ScrollView>
 
-export default function ListingsScreen() {
-  const [feed, setFeed] = useState<Feed>("discover");
-  const [importOpen, setImportOpen] = useState(false);
-  const discover = useQuery(api.listings.discover);
-  const finds = useQuery(api.listings.myFinds);
-  const listings = feed === "discover" ? discover : finds;
-  const openImport = () => setImportOpen(true);
+      {applied > 0 && (
+        <View style={styles.banner} testID="discover-filter-banner">
+          <Glyph name="sparkles" size={15} color={C.purple} />
+          <Text style={[T.body, styles.bannerText]} numberOfLines={2}>
+            {listings === undefined
+              ? "Matching"
+              : `${listings.length} ${listings.length === 1 ? "home" : "homes"} matching`}{" "}
+            your search: {summary(filters)}
+          </Text>
+          <Pressable
+            onPress={() => apply({})}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Clear filters and show all homes"
+          >
+            <Text style={styles.clear}>Show all</Text>
+          </Pressable>
+        </View>
+      )}
 
-  return (
-    <View style={styles.screen}>
-      <FlatList
-        data={listings ?? []}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <ListingCard listing={item} />}
-        ListHeaderComponent={
-          <View style={styles.listHeader}>
-            <FeedSwitch value={feed} onChange={setFeed} />
-            {feed === "discover" ? (
-              <Text style={styles.sectionTitle}>Available now</Text>
-            ) : finds?.length ? (
-              <ImportEntry onPress={openImport} />
-            ) : null}
-          </View>
-        }
-        ListFooterComponent={
-          <View style={feed !== "discover" && styles.hidden}>
-            <AddListingForm />
-          </View>
-        }
-        ListEmptyComponent={
-          listings === undefined ? (
-            <ActivityIndicator style={styles.empty} />
-          ) : feed === "discover" ? (
-            <Text style={styles.empty}>
-              No listings yet. Add the first one below.
+      {shown === undefined ? (
+        <ActivityIndicator color={C.muted} style={styles.loading} />
+      ) : shown.length === 0 ? (
+        applied > 0 || needle ? (
+          <View style={styles.empty} testID="discover-empty">
+            <Glyph name="magnifyingglass" size={26} color={C.purple} />
+            <Text style={T.h2}>No homes match</Text>
+            <Text style={[T.muted, styles.emptyBody]}>
+              {applied > 0
+                ? `Nothing listed right now fits ${summary(filters)}${needle ? ` and “${query.trim()}”` : ""}.`
+                : `Nothing matches “${query.trim()}”.`}
             </Text>
-          ) : (
-            <FindsEmpty onImport={openImport} />
-          )
-        }
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
-        automaticallyAdjustKeyboardInsets
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
+            <View style={styles.emptyActions}>
+              {applied > 0 && (
+                <Action label="Clear filters" onPress={() => apply({})} />
+              )}
+              {needle !== "" && (
+                <Action
+                  label="Clear search"
+                  secondary
+                  onPress={() => setQuery("")}
+                />
+              )}
+            </View>
+          </View>
+        ) : (
+          <EmptyState
+            title="No homes yet"
+            body="New listings in San Francisco will show up here as soon as they go live."
+          />
+        )
+      ) : (
+        <View style={styles.feed}>
+          {shown.map((listing) => (
+            <ListingCard
+              key={listing._id}
+              listing={listing}
+              now={now}
+              saved={isSaved(listing._id)}
+              onToggleSave={() => toggle(listing._id)}
+            />
+          ))}
+        </View>
+      )}
+
+      <FilterSheet
+        visible={sheetOpen}
+        filters={filters}
+        onClose={() => setSheetOpen(false)}
+        onApply={apply}
       />
-      <ImportSheet visible={importOpen} onClose={() => setImportOpen(false)} />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas },
-  content: { padding: 16, paddingBottom: 48, gap: 12 },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: fonts.semibold,
-    color: colors.ink,
-    letterSpacing: -0.4,
-    marginTop: 8,
-  },
-  listHeader: { gap: space.md },
-  hidden: { display: "none" },
-  segmented: {
+  search: {
     flexDirection: "row",
-    backgroundColor: colors.lavender,
-    borderRadius: radius.pill,
-    padding: space.xs,
+    alignItems: "center",
+    gap: 10,
+    minHeight: 50,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: C.searchFill,
   },
-  segment: {
+  searchInput: {
     flex: 1,
-    minHeight: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-  },
-  segmentSelected: {
-    backgroundColor: colors.white,
-    shadowColor: colors.ink,
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
-  },
-  segmentPressed: { opacity: 0.7 },
-  segmentLabel: { ...type.button, fontSize: 15, color: colors.inkMuted },
-  segmentLabelSelected: { color: colors.ink },
-  findsEmpty: {
-    alignItems: "center",
-    gap: space.md,
-    paddingHorizontal: space.xl,
-    paddingVertical: space.xxxl,
-  },
-  findsEmptyTitle: { ...type.heading, marginTop: space.sm },
-  findsEmptyBody: { ...type.bodyMuted, textAlign: "center" },
-  form: { gap: 10, marginTop: space.xl },
-  field: { gap: 4 },
-  label: { fontSize: 13, fontFamily: fonts.medium, color: colors.inkMuted },
-  input: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    color: colors.ink,
-  },
-  error: { color: colors.error, fontFamily: fonts.regular, fontSize: 14 },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  buttonPressed: { opacity: 0.7 },
-  buttonText: { color: colors.white, fontSize: 16, fontFamily: fonts.medium },
-  importEntry: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    padding: 16,
-    marginBottom: 8,
-  },
-  importTitle: { fontSize: 16, fontFamily: fonts.semibold, color: colors.ink },
-  importSubtitle: {
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.inkMuted,
-    marginTop: 2,
-  },
-  importChevron: {
-    fontFamily: fonts.regular,
-    fontSize: 24,
-    color: colors.inkMuted,
-  },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-  },
-  importedCard: { borderStyle: "dashed", borderColor: colors.primary, gap: 10 },
-  sourceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  cardBody: { flexDirection: "row", gap: 12, alignItems: "center" },
-  cardPhoto: {
-    width: 64,
-    height: 64,
-    borderRadius: 10,
-    backgroundColor: colors.canvas,
-  },
-  cardText: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: 17, fontFamily: fonts.semibold, color: colors.ink },
-  cardNeighborhood: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.inkMuted,
-  },
-  cardMissing: {
-    fontFamily: fonts.regular,
-    fontSize: 12,
-    color: colors.inkMuted,
-  },
-  cardRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-    marginTop: 6,
-  },
-  cardRent: {
-    fontSize: 18,
-    fontFamily: fonts.semibold,
-    color: colors.ink,
-    fontVariant: ["tabular-nums"],
-  },
-  cardUnknown: {
+    ...fonts.regular,
     fontSize: 15,
-    fontFamily: fonts.medium,
-    color: colors.inkMuted,
+    color: C.ink,
+    paddingVertical: 12,
   },
-  cardMeta: { fontFamily: fonts.regular, fontSize: 14, color: colors.inkMuted },
-  empty: { textAlign: "center", color: colors.inkMuted, marginTop: 24 },
+  pillScroller: { marginHorizontal: -20, marginTop: -4 },
+  pills: { gap: 8, paddingHorizontal: 20 },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 38,
+    paddingHorizontal: 13,
+    borderRadius: 13,
+    backgroundColor: C.white,
+    borderWidth: 1,
+    borderColor: C.line,
+  },
+  pillLocation: { backgroundColor: C.skySoft, borderColor: C.skySoft },
+  pillActive: { backgroundColor: C.lavender, borderColor: C.purple },
+  pillLabel: { ...T.body, fontSize: 14, maxWidth: 160 },
+  pillLabelActive: { ...fonts.bold, color: C.purple },
+  pressed: { opacity: 0.7 },
+  banner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: -4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: C.lavender,
+  },
+  bannerText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  clear: { ...fonts.bold, fontSize: 14, color: C.purple },
+  loading: { marginTop: 32 },
+  feed: { gap: 16 },
+  empty: {
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 40,
+    paddingHorizontal: 12,
+  },
+  emptyBody: { textAlign: "center" },
+  emptyActions: {
+    flexDirection: "row",
+    gap: 10,
+    alignSelf: "stretch",
+    marginTop: 12,
+  },
 });

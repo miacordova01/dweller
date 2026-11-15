@@ -303,6 +303,42 @@ export const approvals = query({
   },
 });
 
+export const activity = query({
+  args: {},
+  handler: async (ctx) => {
+    const landlord = await currentLandlord(ctx);
+    if (landlord === null) return null;
+    const landlordId = landlord.userId;
+    const decided = await Promise.all(
+      (["approved", "rejected", "executed", "failed"] as const).map((status) =>
+        ctx.db
+          .query("agentActions")
+          .withIndex("by_approver_status", (q) => q.eq("approverId", landlordId).eq("status", status))
+          .order("desc")
+          .take(30),
+      ),
+    );
+    const actions = [...(await pendingApprovals(ctx, landlordId)), ...decided.flat()]
+      .sort((a, b) => (b.approvedAt ?? b._creationTime) - (a.approvedAt ?? a._creationTime))
+      .slice(0, 30);
+    return await Promise.all(
+      actions.map(async (action) => ({
+        ...(await describeAction(ctx, action)),
+        status: action.status,
+        decidedAt: action.approvedAt ?? null,
+      })),
+    );
+  },
+});
+
+export const me = query({
+  args: {},
+  handler: async (ctx) => {
+    const landlord = await currentLandlord(ctx);
+    return landlord === null ? null : { name: landlord.displayName };
+  },
+});
+
 // Approving an agent proposal performs it: the tour or repair visit the
 // agent proposed becomes real, the outcome is written to result, and the
 // action is executed. Tools with nothing to perform here yet (such as

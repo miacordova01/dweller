@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 0,
   },
-  sparkle: { color: colors.primary, fontFamily: fonts.regular, fontSize: 11 },
-  sparkleLarge: { fontFamily: fonts.regular, fontSize: 18 },
-  label: { color: colors.ink, fontSize: 12, fontFamily: fonts.medium },
+  sparkle: { color: colors.primary, ...fonts.regular, fontSize: 11 },
+  sparkleLarge: { ...fonts.regular, fontSize: 18 },
+  label: { color: colors.ink, fontSize: 12, ...fonts.bold },
 });

@@ -69,6 +69,6 @@ const styles = StyleSheet.create({
   lineDone: { backgroundColor: colors.primary },
   text: { flex: 1, paddingTop: 1 },
   textSpaced: { paddingBottom: space.lg },
-  title: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 20, color: colors.ink },
-  titleUpcoming: { color: colors.inkMuted, fontFamily: fonts.regular },
+  title: { ...fonts.bold, fontSize: 15, lineHeight: 20, color: colors.ink },
+  titleUpcoming: { color: colors.inkMuted, ...fonts.regular },
 });

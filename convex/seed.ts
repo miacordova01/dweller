@@ -115,7 +115,11 @@ const listings = [
     leaseTermMonths: 6,
     description:
       "Unfurnished bedroom in a four-bedroom house. Everyone works or studies at UCSF, so the house is quiet on weeknights. Shared kitchen, two baths for four people, and a little backyard.",
-    amenities: ["Utilities included", "Shared backyard", "Month-to-month after 6"],
+    amenities: [
+      "Utilities included",
+      "Shared backyard",
+      "Month-to-month after 6",
+    ],
     photoUrls: [photo("photo-1630699293277-4d3f2522b7cb")],
   },
   {
@@ -368,17 +372,25 @@ export const seedListings = internalMutation({
   },
 });
 
-// Showing hours for the demo landlord and the clauses of Jordan's lease, so
-// the assistant's bookTour and answerLeaseQuestion have real rows to read.
+// Showing hours for the demo landlord, the clauses of Jordan's lease, and
+// ownership of the seeded catalogue, so the assistant's bookTour and
+// answerLeaseQuestion have real rows to read and every Discover listing can
+// be toured.
 // Run after landlord:seedLandlordDemo. Safe to run again.
 export const seedAgentDemo = internalMutation({
   args: {},
-  returns: v.object({ availability: v.number(), leaseClauses: v.number() }),
+  returns: v.object({
+    availability: v.number(),
+    leaseClauses: v.number(),
+    claimedListings: v.number(),
+  }),
   handler: async (ctx) => {
     const landlord = await currentLandlord(ctx);
     const renter = await currentRenter(ctx);
     if (landlord === null || renter === null) {
-      throw new ConvexError("Run landlord:seedLandlordDemo before seeding the agent demo.");
+      throw new ConvexError(
+        "Run landlord:seedLandlordDemo before seeding the agent demo.",
+      );
     }
     let availability = 0;
     const hasHours = await ctx.db
@@ -405,11 +417,28 @@ export const seedAgentDemo = internalMutation({
       : null;
     if (lease !== null && hasClauses === null) {
       for (const [orderIndex, clause] of sanchezLeaseClauses.entries()) {
-        await ctx.db.insert("leaseClauses", { ...clause, leaseId: lease._id, orderIndex });
+        await ctx.db.insert("leaseClauses", {
+          ...clause,
+          leaseId: lease._id,
+          orderIndex,
+        });
         leaseClauses++;
       }
     }
-    return { availability, leaseClauses };
+    let claimedListings = 0;
+    const catalogue = await ctx.db
+      .query("listings")
+      .withIndex("by_status_neighborhood", (q) => q.eq("status", "active"))
+      .take(200);
+    for (const listing of catalogue) {
+      if (listing.source !== "dweller" || listing.landlordId !== undefined)
+        continue;
+      await ctx.db.patch("listings", listing._id, {
+        landlordId: landlord.userId,
+      });
+      claimedListings++;
+    }
+    return { availability, leaseClauses, claimedListings };
   },
 });
 

@@ -17,9 +17,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: space.md,
     padding: space.lg,
-    borderRadius: radius.md + 2,
+    borderRadius: radius.card,
     backgroundColor: colors.lavender,
   },
-  sparkle: { fontFamily: fonts.regular, fontSize: 20, lineHeight: 22, color: colors.primary },
-  text: { flex: 1, fontFamily: fonts.medium, fontSize: 15, lineHeight: 21, color: colors.ink },
+  sparkle: { ...fonts.regular, fontSize: 20, lineHeight: 22, color: colors.primary },
+  text: { flex: 1, ...fonts.bold, fontSize: 15, lineHeight: 21, color: colors.ink },
 });
