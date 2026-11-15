@@ -230,6 +230,35 @@ export const add = mutation({
   },
 });
 
+// Photos for listings that were seeded or added without any, keyed by address.
+const fallbackPhotos: Record<string, string[]> = {
+  "1452 Diamond St": ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80"],
+  "3218 21st St": ["https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80"],
+  "1739 9th Ave": ["https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80"],
+  "812 Clement St": ["https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&w=1200&q=80"],
+};
+
+export const fillMissingPhotos = internalMutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    let filled = 0;
+    for (const [address, photoUrls] of Object.entries(fallbackPhotos)) {
+      const listings = await ctx.db
+        .query("listings")
+        .withIndex("by_source", (q) => q.eq("source", "dweller"))
+        .filter((q) => q.eq(q.field("address"), address))
+        .take(10);
+      for (const listing of listings) {
+        if (listing.photoUrls.length > 0 || listing.photoStorageIds.length > 0) continue;
+        await ctx.db.patch("listings", listing._id, { photoUrls });
+        filled++;
+      }
+    }
+    return filled;
+  },
+});
+
 export const seed = internalMutation({
   args: {},
   returns: v.number(),
@@ -270,7 +299,7 @@ export const seed = internalMutation({
         city: "San Francisco",
         amenities: [],
         photoStorageIds: [],
-        photoUrls: [],
+        photoUrls: fallbackPhotos[listing.address] ?? [],
         status: "active",
         source: "dweller",
         missingFields: [],
