@@ -16,6 +16,16 @@ import { v } from "convex/values";
 
 const userRole = v.union(v.literal("renter"), v.literal("landlord"));
 
+// Narrowing for the Discover feed and the assistant's findListings. Every
+// field is optional; none set means every listing.
+export const discoverFilters = v.object({
+  maxRentCents: v.optional(v.number()),
+  minBedrooms: v.optional(v.number()),
+  maxBedrooms: v.optional(v.number()),
+  neighborhoods: v.optional(v.array(v.string())),
+  availableBy: v.optional(v.number()),
+});
+
 const listingStatus = v.union(
   v.literal("draft"),
   v.literal("active"),
@@ -59,6 +69,18 @@ export default defineSchema({
     role: userRole,
     phone: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
+    // A renter's onboarding answers and the Discover filters they imply.
+    preferences: v.optional(
+      v.object({
+        location: v.optional(v.string()),
+        budget: v.optional(v.string()),
+        moveIn: v.optional(v.string()),
+        space: v.optional(v.string()),
+        bedrooms: v.optional(v.string()),
+        amenities: v.array(v.string()),
+        filters: discoverFilters,
+      }),
+    ),
   })
     .index("by_user", ["userId"])
     .index("by_role", ["role"]),

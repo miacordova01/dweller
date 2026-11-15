@@ -16,7 +16,7 @@ const openListing = (id: string) => router.push({ pathname: "/listing/[id]", par
 
 export default function RenterActivity() {
   const insets = useSafeAreaInsets();
-  const listings = useQuery(api.listings.discover);
+  const listings = useQuery(api.listings.discover, {});
   const finds = useQuery(api.listings.myFinds);
   const [now] = useState(() => Date.now());
 

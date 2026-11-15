@@ -11,6 +11,7 @@ export type RenterAnswers = {
   budget: string | null;
   moveIn: string | null;
   space: string | null;
+  bedrooms: string | null;
   amenities: string[];
 };
 
@@ -38,7 +39,7 @@ type OnboardingState = Profile & {
 
 const emptyProfile: Profile = {
   role: null,
-  renter: { location: "", budget: null, moveIn: null, space: null, amenities: [] },
+  renter: { location: "", budget: null, moveIn: null, space: null, bedrooms: null, amenities: [] },
   landlord: { propertyCount: null, location: "", occupied: null, listVacancies: null },
 };
 
@@ -51,7 +52,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     AsyncStorage.multiGet([COMPLETED_KEY, PROFILE_KEY])
       .then(([[, done], [, saved]]) => {
-        if (saved) setProfile({ ...emptyProfile, ...(JSON.parse(saved) as Partial<Profile>) });
+        if (saved) {
+          const stored = JSON.parse(saved) as Partial<Profile>;
+          setProfile({
+            ...emptyProfile,
+            ...stored,
+            renter: { ...emptyProfile.renter, ...stored.renter },
+            landlord: { ...emptyProfile.landlord, ...stored.landlord },
+          });
+        }
         setCompleted(done === "true");
       })
       .catch(() => setCompleted(false));

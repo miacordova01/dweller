@@ -18,7 +18,7 @@ import { colors, fonts, radius, space, type } from "@/theme";
 
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const listings = useQuery(api.listings.discover);
+  const listings = useQuery(api.listings.discover, {});
   const [now] = useState(() => Date.now());
 
   const homes = (listings ?? []).filter((listing) => listing.photoUrl);

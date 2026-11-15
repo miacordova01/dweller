@@ -74,7 +74,7 @@ export function ListingCard({
         {meta ? <Text style={styles.meta}>{meta}</Text> : null}
         <View style={styles.bottomRow}>
           <View style={styles.place}>
-            <Glyph name="mappin.and.ellipse" size={13} color={C.muted} />
+            <Glyph name="mappin" size={13} color={C.muted} />
             <Text style={T.muted} numberOfLines={1}>
               {place}
             </Text>

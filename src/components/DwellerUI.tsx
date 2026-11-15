@@ -68,6 +68,12 @@ const androidNames: Record<string, string> = {
   photo: "image",
   "slider.horizontal.3": "tune",
   "mappin.and.ellipse": "location_on",
+  mappin: "location_on",
+  "arrow.left": "arrow_back",
+  "arrow.up": "arrow_upward",
+  "bed.double": "bed",
+  bathtub: "bathtub",
+  "square.dashed": "square_foot",
   "square.and.arrow.up": "share",
 };
 
@@ -135,48 +141,84 @@ export function Action({
   );
 }
 
+// The app's chrome. A flex column: the content region (flex 1) and then the
+// tab bar at its natural height. Screens draw only inside the content
+// region, so nothing can sit behind the bar. A sticky footer is the last
+// child of the content region. `bare` hands the whole region to the screen
+// (full-bleed photos, chat); otherwise it scrolls with the standard header.
+// Pushed screens get a back arrow; tab roots never do.
 export function Screen({
   children,
   tab,
   landlord = false,
+  pushed = false,
+  bare = false,
   title,
   topRight,
+  footer,
 }: {
   children: ReactNode;
   tab?: string;
   landlord?: boolean;
+  pushed?: boolean;
+  bare?: boolean;
   title?: string;
   topRight?: ReactNode;
+  footer?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   return (
     <View style={styles.screen}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 12, paddingBottom: (tab ? 28 : 28 + insets.bottom) },
-        ]}
-      >
-        <View style={styles.header}>
-          {title ? <Text style={T.h2}>{title}</Text> : <Wordmark fontSize={29} />}
-          {topRight ?? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Notifications, unread"
-              hitSlop={10}
-              onPress={() => router.push(landlord ? "/landlord/approvals" : "/activity")}
-            >
-              <Glyph name="bell" size={22} />
-              <View style={styles.bellDot} />
-            </Pressable>
-          )}
-        </View>
-        {children}
-      </ScrollView>
-      {tab && <Tabs selected={tab} landlord={landlord} />}
+      <View style={styles.region}>
+        {bare ? (
+          children
+        ) : (
+          <ScrollView
+            style={styles.region}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[styles.content, { paddingTop: insets.top + 12 }]}
+          >
+            <View style={styles.header}>
+              <View style={styles.headerLead}>
+                {pushed && <BackButton />}
+                {title ? <Text style={T.h2}>{title}</Text> : <Wordmark fontSize={29} />}
+              </View>
+              {topRight ??
+                (pushed ? null : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Notifications, unread"
+                    hitSlop={10}
+                    onPress={() => router.push(landlord ? "/landlord/approvals" : "/activity")}
+                  >
+                    <Glyph name="bell" size={22} />
+                    <View style={styles.bellDot} />
+                  </Pressable>
+                ))}
+            </View>
+            {children}
+          </ScrollView>
+        )}
+        {footer}
+      </View>
+      <Tabs selected={tab ?? ""} landlord={landlord} pushed={pushed} />
     </View>
+  );
+}
+
+export function BackButton({ fallback = "/" }: { fallback?: Href }) {
+  return (
+    <Pressable
+      testID="back"
+      onPress={() => (router.canGoBack() ? router.back() : router.replace(fallback))}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      style={styles.back}
+    >
+      <Glyph name="chevron.left" size={20} color={C.ink} />
+    </Pressable>
   );
 }
 
@@ -196,7 +238,9 @@ const landlordTabs: [string, string, Href][] = [
   ["Profile", "person", "/profile"],
 ];
 
-export function Tabs({ selected, landlord = false }: { selected: string; landlord?: boolean }) {
+// Tab roots replace each other. From a pushed screen, any tab unwinds the
+// stack to its root and then lands on that tab's root.
+export function Tabs({ selected, landlord = false, pushed = false }: { selected: string; landlord?: boolean; pushed?: boolean }) {
   const insets = useSafeAreaInsets();
   return (
     <View role="tablist" style={[styles.tabs, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -209,7 +253,12 @@ export function Tabs({ selected, landlord = false }: { selected: string; landlor
             role="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={label}
-            onPress={() => !active && router.replace(path)}
+            onPress={() => {
+              if (pushed) {
+                if (router.canDismiss()) router.dismissAll();
+                router.replace(path);
+              } else if (!active) router.replace(path);
+            }}
             style={[styles.tab, active && styles.tabActive]}
           >
             <Glyph name={active && icon !== "magnifyingglass" ? `${icon}.fill` : icon} size={21} color={active ? C.purple : C.ink} />
@@ -260,7 +309,10 @@ export function RowLink({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.canvas },
-  content: { paddingHorizontal: 20, gap: 18 },
+  region: { flex: 1 },
+  content: { paddingHorizontal: 20, paddingBottom: 28, gap: 18 },
+  headerLead: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 },
+  back: { width: 32, height: 40, justifyContent: "center" },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 42 },
   bellDot: {
     position: "absolute",

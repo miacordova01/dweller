@@ -22,7 +22,12 @@ import {
 import { insertTicket } from "./maintenance";
 import { activeLease, currentLandlord, currentRenter } from "./people";
 import schema from "./schema";
-import { DEFAULT_TIMEZONE, formatLocal, zonedParts, zonedTimeToUtc } from "./time";
+import {
+  DEFAULT_TIMEZONE,
+  formatLocal,
+  zonedParts,
+  zonedTimeToUtc,
+} from "./time";
 import { inquiryFor, TOUR_MINUTES } from "./tours";
 
 // The Dweller assistant behind the AI composer. One action per user turn:
@@ -76,9 +81,20 @@ const findListingsTool: FunctionTool = {
         "string",
         "Words to match against title, address, neighborhood, description and amenities, e.g. '1067 Treat Ave' or 'private entrance'.",
       ),
-      neighborhood: nullable("string", "Neighborhood name, e.g. 'Mission District'."),
+      neighborhood: nullable(
+        "string",
+        "Neighborhood name, e.g. 'Mission District'.",
+      ),
       maxRentDollars: nullable("number", "Highest monthly rent in US dollars."),
       minBedrooms: nullable("number", "Fewest bedrooms. 0 allows studios."),
+      maxBedrooms: nullable(
+        "number",
+        "Most bedrooms. 0 means studios only; 1 with minBedrooms 1 means exactly one bedroom.",
+      ),
+      availableBy: nullable(
+        "string",
+        "Latest move-in date as YYYY-MM-DD; only listings available by then.",
+      ),
     }),
   }),
 };
@@ -92,7 +108,10 @@ const renterTools: FunctionTool[] = [
       "Request a tour of a Dweller listing. Picks the first slot in the owner's showing hours at or after the preferred time and sends it to the owner for approval.",
     strict: true,
     parameters: objectSchema({
-      listingId: { type: "string", description: "listingId from findListings." },
+      listingId: {
+        type: "string",
+        description: "listingId from findListings.",
+      },
       preferredWhen: {
         type: "string",
         description:
@@ -109,9 +128,13 @@ const renterTools: FunctionTool[] = [
     parameters: objectSchema({
       description: {
         type: "string",
-        description: "The problem in the renter's own words, with every detail they gave.",
+        description:
+          "The problem in the renter's own words, with every detail they gave.",
       },
-      photoStorageId: nullable("string", "The attached photo id, if the renter attached one."),
+      photoStorageId: nullable(
+        "string",
+        "The attached photo id, if the renter attached one.",
+      ),
     }),
   },
   {
@@ -121,7 +144,10 @@ const renterTools: FunctionTool[] = [
       "Answer a question about the renter's lease from its clauses, with the sections relied on.",
     strict: true,
     parameters: objectSchema({
-      question: { type: "string", description: "The renter's question about their lease." },
+      question: {
+        type: "string",
+        description: "The renter's question about their lease.",
+      },
     }),
   },
 ];
@@ -130,7 +156,9 @@ const landlordTools: FunctionTool[] = [findListingsTool];
 
 function instructions(turn: Turn) {
   const now = Date.now();
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: DEFAULT_TIMEZONE }).format(new Date(now));
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DEFAULT_TIMEZONE,
+  }).format(new Date(now));
   return `You are the Dweller assistant, helping ${turn.displayName}, a ${turn.role} in San Francisco.
 
 Today is ${today}; it is now ${formatLocal(now)} in San Francisco.
@@ -155,26 +183,37 @@ export const ask = action({
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args): Promise<ConversationView> => {
-    const turn: Turn = await ctx.runMutation(internal.assistant.beginTurn, args);
+    const turn: Turn = await ctx.runMutation(
+      internal.assistant.beginTurn,
+      args,
+    );
     const client = openAiClient();
     const tools = turn.role === "renter" ? renterTools : landlordTools;
     const system = instructions(turn);
 
-    let response = await respond(client, { instructions: system, input: turn.history, tools });
+    let response = await respond(client, {
+      instructions: system,
+      input: turn.history,
+      tools,
+    });
     let agentActionId: Id<"agentActions"> | undefined;
     let capability: Capability | undefined;
     for (let round = 0; ; round++) {
       const calls = response.output.filter(
-        (item): item is ResponseFunctionToolCall => item.type === "function_call",
+        (item): item is ResponseFunctionToolCall =>
+          item.type === "function_call",
       );
       if (calls.length === 0) break;
       if (round === MAX_TOOL_ROUNDS) {
-        throw new ConvexError("The assistant got stuck on that request. Try rephrasing it.");
+        throw new ConvexError(
+          "The assistant got stuck on that request. Try rephrasing it.",
+        );
       }
       const outputs: ResponseInputItem[] = [];
       for (const call of calls) {
         const result = await runTool(ctx, client, turn, call);
-        if (result.agentActionId !== undefined) agentActionId = result.agentActionId;
+        if (result.agentActionId !== undefined)
+          agentActionId = result.agentActionId;
         if (result.capability !== undefined) capability = result.capability;
         outputs.push({
           type: "function_call_output",
@@ -190,7 +229,8 @@ export const ask = action({
       });
     }
     const text = response.output_text.trim();
-    if (text === "") throw new ConvexError("The assistant didn't reply. Try again.");
+    if (text === "")
+      throw new ConvexError("The assistant didn't reply. Try again.");
     return await ctx.runMutation(internal.assistant.finishTurn, {
       conversationId: turn.conversationId,
       text,
@@ -203,11 +243,16 @@ export const ask = action({
 export const conversation = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, { conversationId }) => {
-    const people = await Promise.all([currentRenter(ctx), currentLandlord(ctx)]);
+    const people = await Promise.all([
+      currentRenter(ctx),
+      currentLandlord(ctx),
+    ]);
     const conversation = await ctx.db.get("conversations", conversationId);
     if (
       conversation === null ||
-      !people.some((p) => p !== null && conversation.participantIds.includes(p.userId))
+      !people.some(
+        (p) => p !== null && conversation.participantIds.includes(p.userId),
+      )
     ) {
       return null;
     }
@@ -227,7 +272,12 @@ type Turn = {
 
 type ConversationView = {
   conversation: Doc<"conversations">;
-  messages: Doc<"messages">[];
+  messages: (Doc<"messages"> & {
+    action: Pick<
+      Doc<"agentActions">,
+      "tool" | "status" | "requiresApproval" | "args"
+    > | null;
+  })[];
 };
 
 async function conversationView(
@@ -236,10 +286,28 @@ async function conversationView(
 ): Promise<ConversationView> {
   const messages = await ctx.db
     .query("messages")
-    .withIndex("by_conversation", (q) => q.eq("conversationId", conversation._id))
+    .withIndex("by_conversation", (q) =>
+      q.eq("conversationId", conversation._id),
+    )
     .order("desc")
     .take(100);
-  return { conversation, messages: messages.reverse() };
+  const withActions = await Promise.all(
+    messages.reverse().map(async (message) => {
+      const action = message.agentActionId
+        ? await ctx.db.get("agentActions", message.agentActionId)
+        : null;
+      return {
+        ...message,
+        action: action && {
+          tool: action.tool,
+          status: action.status,
+          requiresApproval: action.requiresApproval,
+          args: action.args,
+        },
+      };
+    }),
+  );
+  return { conversation, messages: withActions };
 }
 
 export const beginTurn = internalMutation({
@@ -250,23 +318,41 @@ export const beginTurn = internalMutation({
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args): Promise<Turn> => {
-    const profile = args.role === "renter" ? await currentRenter(ctx) : await currentLandlord(ctx);
-    if (profile === null) throw new ConvexError(`Sign in as a ${args.role} to use the assistant.`);
-    const status = await rateLimiter.limit(ctx, "askPerUser", { key: profile.userId });
+    const profile =
+      args.role === "renter"
+        ? await currentRenter(ctx)
+        : await currentLandlord(ctx);
+    if (profile === null)
+      throw new ConvexError(`Sign in as a ${args.role} to use the assistant.`);
+    const status = await rateLimiter.limit(ctx, "askPerUser", {
+      key: profile.userId,
+    });
     if (!status.ok) {
       const minutes = Math.max(1, Math.ceil(status.retryAfter / 60_000));
-      throw new ConvexError(`You've sent a lot of messages in a short time. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`);
+      throw new ConvexError(
+        `You've sent a lot of messages in a short time. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+      );
     }
     const anonymous = await rateLimiter.limit(ctx, "askAnonymous");
-    if (!anonymous.ok) throw new ConvexError("The assistant is busy right now. Try again in a minute.");
+    if (!anonymous.ok)
+      throw new ConvexError(
+        "The assistant is busy right now. Try again in a minute.",
+      );
 
     const text = args.message.trim();
     if (text === "") throw new ConvexError("Type a message first.");
     if (text.length > MESSAGE_MAX_CHARS) {
-      throw new ConvexError(`Keep messages under ${MESSAGE_MAX_CHARS} characters.`);
+      throw new ConvexError(
+        `Keep messages under ${MESSAGE_MAX_CHARS} characters.`,
+      );
     }
-    if (args.photoStorageId && (await ctx.db.system.get("_storage", args.photoStorageId)) === null) {
-      throw new ConvexError("That photo upload could not be found. Attach it again.");
+    if (
+      args.photoStorageId &&
+      (await ctx.db.system.get("_storage", args.photoStorageId)) === null
+    ) {
+      throw new ConvexError(
+        "That photo upload could not be found. Attach it again.",
+      );
     }
 
     const now = Date.now();
@@ -280,10 +366,15 @@ export const beginTurn = internalMutation({
       });
     } else {
       const conversation = await ctx.db.get("conversations", conversationId);
-      if (conversation === null || !conversation.participantIds.includes(profile.userId)) {
+      if (
+        conversation === null ||
+        !conversation.participantIds.includes(profile.userId)
+      ) {
         throw new ConvexError("That conversation isn't yours.");
       }
-      await ctx.db.patch("conversations", conversationId, { lastMessageAt: now });
+      await ctx.db.patch("conversations", conversationId, {
+        lastMessageAt: now,
+      });
     }
     await ctx.db.insert("messages", {
       conversationId,
@@ -296,12 +387,16 @@ export const beginTurn = internalMutation({
     const [messages, actions] = await Promise.all([
       ctx.db
         .query("messages")
-        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .withIndex("by_conversation", (q) =>
+          q.eq("conversationId", conversationId),
+        )
         .order("desc")
         .take(HISTORY_LIMIT),
       ctx.db
         .query("agentActions")
-        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .withIndex("by_conversation", (q) =>
+          q.eq("conversationId", conversationId),
+        )
         .order("desc")
         .take(HISTORY_LIMIT),
     ]);
@@ -311,12 +406,25 @@ export const beginTurn = internalMutation({
       .sort((a, b) => a._creationTime - b._creationTime)
       .flatMap((row): ResponseInputItem[] => {
         if ("tool" in row) {
-          const note = JSON.stringify({ tool: row.tool, status: row.status, args: row.args, result: row.result });
-          return [{ role: "developer", content: `Earlier tool call: ${note.slice(0, 3000)}` }];
+          const note = JSON.stringify({
+            tool: row.tool,
+            status: row.status,
+            args: row.args,
+            result: row.result,
+          });
+          return [
+            {
+              role: "developer",
+              content: `Earlier tool call: ${note.slice(0, 3000)}`,
+            },
+          ];
         }
         if (row.authorRole === "system") return [];
-        if (row.authorRole === "agent") return [{ role: "assistant", content: row.text }];
-        const photos = row.attachmentStorageIds.map((id) => `\n(Attached photo id: ${id})`).join("");
+        if (row.authorRole === "agent")
+          return [{ role: "assistant", content: row.text }];
+        const photos = row.attachmentStorageIds
+          .map((id) => `\n(Attached photo id: ${id})`)
+          .join("");
         return [{ role: "user", content: row.text + photos }];
       });
 
@@ -335,7 +443,9 @@ export const finishTurn = internalMutation({
     conversationId: v.id("conversations"),
     text: v.string(),
     agentActionId: v.optional(v.id("agentActions")),
-    capability: v.optional(schema.tables.conversations.validator.fields.capability),
+    capability: v.optional(
+      schema.tables.conversations.validator.fields.capability,
+    ),
   },
   handler: async (ctx, args): Promise<ConversationView> => {
     await ctx.db.insert("messages", {
@@ -370,7 +480,9 @@ async function runTool(
 ): Promise<ToolResult> {
   const args = JSON.parse(call.arguments);
   const base = { conversationId: turn.conversationId, userId: turn.userId };
-  const allowed = (turn.role === "renter" ? renterTools : landlordTools).some((t) => t.name === call.name);
+  const allowed = (turn.role === "renter" ? renterTools : landlordTools).some(
+    (t) => t.name === call.name,
+  );
   try {
     if (!allowed) throw new ConvexError(`${call.name} isn't available here.`);
     switch (call.name) {
@@ -397,7 +509,8 @@ async function runTool(
         throw new ConvexError(`Unknown tool ${call.name}.`);
     }
   } catch (error) {
-    if (!(error instanceof ConvexError) || typeof error.data !== "string") throw error;
+    if (!(error instanceof ConvexError) || typeof error.data !== "string")
+      throw error;
     await ctx.runMutation(internal.assistant.logAction, {
       ...base,
       capability: capabilityOf(call.name),
@@ -449,21 +562,45 @@ async function findListings(
     neighborhood: string | null;
     maxRentDollars: number | null;
     minBedrooms: number | null;
+    maxBedrooms: number | null;
+    availableBy: string | null;
   },
 ): Promise<ToolResult> {
-  const listings = await ctx.runQuery(api.listings.discover, {});
-  const words = (criteria.keywords ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  const neighborhood = criteria.neighborhood?.trim().toLowerCase();
+  const availableBy = criteria.availableBy
+    ? Date.parse(criteria.availableBy)
+    : NaN;
+  const listings = await ctx.runQuery(api.listings.discover, {
+    neighborhoods: criteria.neighborhood?.trim()
+      ? [criteria.neighborhood]
+      : undefined,
+    maxRentCents:
+      criteria.maxRentDollars === null
+        ? undefined
+        : Math.round(criteria.maxRentDollars * 100),
+    minBedrooms: criteria.minBedrooms ?? undefined,
+    maxBedrooms: criteria.maxBedrooms ?? undefined,
+    availableBy: Number.isFinite(availableBy) ? availableBy : undefined,
+  });
+  const words = (criteria.keywords ?? "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
   const scored = listings
     .filter((l) => l.status === "active")
-    .filter((l) => !neighborhood || l.neighborhood.toLowerCase().includes(neighborhood))
-    .filter((l) => criteria.maxRentDollars === null || l.rentMonthlyCents <= criteria.maxRentDollars * 100)
-    .filter((l) => criteria.minBedrooms === null || l.bedrooms >= criteria.minBedrooms)
     .map((l) => {
-      const haystack = [l.title, l.address, l.neighborhood, l.description ?? "", ...l.amenities]
+      const haystack = [
+        l.title,
+        l.address,
+        l.neighborhood,
+        l.description ?? "",
+        ...l.amenities,
+      ]
         .join(" ")
         .toLowerCase();
-      return { listing: l, score: words.filter((w) => haystack.includes(w)).length };
+      return {
+        listing: l,
+        score: words.filter((w) => haystack.includes(w)).length,
+      };
     })
     .filter(({ score }) => words.length === 0 || score > 0)
     .sort((a, b) => b.score - a.score)
@@ -476,7 +613,9 @@ async function findListings(
     rentMonthlyDollars: l.rentMonthlyCents / 100,
     bedrooms: l.bedrooms,
     bathrooms: l.bathrooms,
-    availableFrom: l.availableFrom ? new Date(l.availableFrom).toISOString().slice(0, 10) : null,
+    availableFrom: l.availableFrom
+      ? new Date(l.availableFrom).toISOString().slice(0, 10)
+      : null,
     amenities: l.amenities,
   }));
   const agentActionId = await ctx.runMutation(internal.assistant.logAction, {
@@ -497,27 +636,59 @@ type Window = Doc<"availability">;
 
 // First slot in the owner's showing hours at or after the preferred time that
 // doesn't overlap another proposed or confirmed tour.
-function pickSlot(windows: Window[], busy: Doc<"tours">[], preferredWhen: string, now: number) {
+function pickSlot(
+  windows: Window[],
+  busy: Doc<"tours">[],
+  preferredWhen: string,
+  now: number,
+) {
   const timeZone = windows[0].timezone;
-  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(preferredWhen.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(
+    preferredWhen.trim(),
+  );
   const start = match
-    ? { year: +match[1], month: +match[2], day: +match[3], minuteOfDay: match[4] ? +match[4] * 60 + +match[5] : 0 }
+    ? {
+        year: +match[1],
+        month: +match[2],
+        day: +match[3],
+        minuteOfDay: match[4] ? +match[4] * 60 + +match[5] : 0,
+      }
     : zonedParts(now, timeZone);
-  const preferred = zonedTimeToUtc(start.year, start.month, start.day, start.minuteOfDay, timeZone);
+  const preferred = zonedTimeToUtc(
+    start.year,
+    start.month,
+    start.day,
+    start.minuteOfDay,
+    timeZone,
+  );
   const notBefore = Math.max(preferred, now + MIN_LEAD_MS);
   const length = TOUR_MINUTES * 60_000;
   for (let offset = 0; offset < SEARCH_DAYS; offset++) {
-    const date = new Date(Date.UTC(start.year, start.month - 1, start.day + offset));
+    const date = new Date(
+      Date.UTC(start.year, start.month - 1, start.day + offset),
+    );
     const weekday = date.getUTCDay();
     const todays = windows
       .filter((w) => w.weekday === weekday)
       .sort((a, b) => a.startMinute - b.startMinute);
     for (const window of todays) {
-      for (let minute = window.startMinute; minute + TOUR_MINUTES <= window.endMinute; minute += 30) {
-        const slot = zonedTimeToUtc(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), minute, window.timezone);
+      for (
+        let minute = window.startMinute;
+        minute + TOUR_MINUTES <= window.endMinute;
+        minute += 30
+      ) {
+        const slot = zonedTimeToUtc(
+          date.getUTCFullYear(),
+          date.getUTCMonth() + 1,
+          date.getUTCDate(),
+          minute,
+          window.timezone,
+        );
         if (slot < notBefore) continue;
         const clashes = busy.some(
-          (t) => slot < t.scheduledFor + t.durationMinutes * 60_000 && t.scheduledFor < slot + length,
+          (t) =>
+            slot < t.scheduledFor + t.durationMinutes * 60_000 &&
+            t.scheduledFor < slot + length,
         );
         if (!clashes) return { slot, timeZone: window.timezone };
       }
@@ -537,9 +708,15 @@ export const bookTour = internalMutation({
     const listingId = ctx.db.normalizeId("listings", args.listingId);
     const listing = listingId ? await ctx.db.get("listings", listingId) : null;
     if (listing === null || listing.status !== "active") {
-      throw new ConvexError("That listing isn't available to tour. Search again with findListings.");
+      throw new ConvexError(
+        "That listing isn't available to tour. Search again with findListings.",
+      );
     }
-    const { inquiryId, landlordId } = await inquiryFor(ctx, args.userId, listing);
+    const { inquiryId, landlordId } = await inquiryFor(
+      ctx,
+      args.userId,
+      listing,
+    );
     const windows = (
       await ctx.db
         .query("availability")
@@ -547,18 +724,24 @@ export const bookTour = internalMutation({
         .take(100)
     ).filter((w) => w.listingId === undefined || w.listingId === listing._id);
     if (windows.length === 0) {
-      throw new ConvexError("The owner hasn't set showing hours yet, so there's no slot to offer.");
+      throw new ConvexError(
+        "The owner hasn't set showing hours yet, so there's no slot to offer.",
+      );
     }
     const now = Date.now();
     const busy = (
       await ctx.db
         .query("tours")
-        .withIndex("by_landlord_time", (q) => q.eq("landlordId", landlordId).gte("scheduledFor", now - 4 * HOUR))
+        .withIndex("by_landlord_time", (q) =>
+          q.eq("landlordId", landlordId).gte("scheduledFor", now - 4 * HOUR),
+        )
         .take(500)
     ).filter((t) => t.status === "proposed" || t.status === "confirmed");
     const picked = pickSlot(windows, busy, args.preferredWhen, now);
     if (picked === null) {
-      throw new ConvexError(`The owner has no open showing slot in the ${SEARCH_DAYS} days after that time.`);
+      throw new ConvexError(
+        `The owner has no open showing slot in the ${SEARCH_DAYS} days after that time.`,
+      );
     }
     const when = formatLocal(picked.slot, picked.timeZone);
     const tourId = await ctx.db.insert("tours", {
@@ -619,24 +802,50 @@ type Triage = {
 };
 
 const triageSchema = objectSchema({
-  title: { type: "string", description: "A short ticket title, like 'Kitchen sink leaking under the cabinet'." },
-  category: { type: "string", enum: categories, description: "The trade the repair needs." },
+  title: {
+    type: "string",
+    description:
+      "A short ticket title, like 'Kitchen sink leaking under the cabinet'.",
+  },
+  category: {
+    type: "string",
+    enum: categories,
+    description: "The trade the repair needs.",
+  },
   urgency: {
     type: "string",
     enum: urgencies,
     description:
       "emergency: active danger or flooding, no heat in winter, no water, gas smell. high: damage gets worse within days or a core appliance is out. normal: needs fixing but can wait a week. low: cosmetic.",
   },
-  diagnosis: { type: "string", description: "One or two sentences on the most likely cause, for the landlord." },
-  estimatedCostDollars: { type: "number", description: "Typical San Francisco cost for the repair in US dollars, parts and labour." },
+  diagnosis: {
+    type: "string",
+    description:
+      "One or two sentences on the most likely cause, for the landlord.",
+  },
+  estimatedCostDollars: {
+    type: "number",
+    description:
+      "Typical San Francisco cost for the repair in US dollars, parts and labour.",
+  },
 });
 
-async function triageRepair(client: OpenAI, description: string): Promise<Triage> {
+async function triageRepair(
+  client: OpenAI,
+  description: string,
+): Promise<Triage> {
   const response = await respond(client, {
     instructions:
       "You triage repair requests from renters for their landlord. Judge only from the description; do not assume details it doesn't give.",
     input: [{ role: "user", content: description }],
-    text: { format: { type: "json_schema", name: "repair_triage", strict: true, schema: triageSchema } },
+    text: {
+      format: {
+        type: "json_schema",
+        name: "repair_triage",
+        strict: true,
+        schema: triageSchema,
+      },
+    },
   });
   return JSON.parse(response.output_text) as Triage;
 }
@@ -656,12 +865,17 @@ export const fileTicket = internalMutation({
     }),
   },
   handler: async (ctx, args): Promise<ToolResult> => {
-    const photoId = args.photoStorageId ? ctx.db.system.normalizeId("_storage", args.photoStorageId) : null;
+    const photoId = args.photoStorageId
+      ? ctx.db.system.normalizeId("_storage", args.photoStorageId)
+      : null;
     if (args.photoStorageId && photoId === null) {
       throw new ConvexError("That photo id isn't a valid upload.");
     }
     const { triage } = args;
-    const estimatedCostCents = Math.max(0, Math.round(triage.estimatedCostDollars * 100));
+    const estimatedCostCents = Math.max(
+      0,
+      Math.round(triage.estimatedCostDollars * 100),
+    );
     const { ticketId, landlordId } = await insertTicket(ctx, args.userId, {
       title: triage.title,
       description: args.description.trim(),
@@ -673,15 +887,30 @@ export const fileTicket = internalMutation({
       aiSuggestedTrade: triage.category,
       aiEstimatedCostCents: estimatedCostCents,
     });
-    const ticket = { ticketId, title: triage.title, category: triage.category, urgency: triage.urgency };
+    const ticket = {
+      ticketId,
+      title: triage.title,
+      category: triage.category,
+      urgency: triage.urgency,
+    };
     const vendors = await ctx.db
       .query("vendors")
-      .withIndex("by_landlord_trade", (q) => q.eq("landlordId", landlordId).eq("trade", triage.category))
+      .withIndex("by_landlord_trade", (q) =>
+        q.eq("landlordId", landlordId).eq("trade", triage.category),
+      )
       .take(20);
-    const vendor = vendors.sort((a, b) => (a.hourlyRateCents ?? Infinity) - (b.hourlyRateCents ?? Infinity))[0];
+    const vendor = vendors.sort(
+      (a, b) =>
+        (a.hourlyRateCents ?? Infinity) - (b.hourlyRateCents ?? Infinity),
+    )[0];
     if (vendor === undefined) {
       return {
-        output: { ...ticket, status: "triaging", vendor: null, note: `Your landlord has no ${triage.category} vendor on file yet, so they'll arrange the repair themselves.` },
+        output: {
+          ...ticket,
+          status: "triaging",
+          vendor: null,
+          note: `Your landlord has no ${triage.category} vendor on file yet, so they'll arrange the repair themselves.`,
+        },
         capability: "maintenance",
       };
     }
@@ -690,7 +919,15 @@ export const fileTicket = internalMutation({
     const today = zonedParts(now, DEFAULT_TIMEZONE);
     const dayOffset = triage.urgency === "emergency" ? 0 : 1;
     const proposedSlots = [9 * 60, 13 * 60]
-      .map((minute) => zonedTimeToUtc(today.year, today.month, today.day + dayOffset, minute, DEFAULT_TIMEZONE))
+      .map((minute) =>
+        zonedTimeToUtc(
+          today.year,
+          today.month,
+          today.day + dayOffset,
+          minute,
+          DEFAULT_TIMEZONE,
+        ),
+      )
       .map((slot) => (slot < now + MIN_LEAD_MS ? slot + 24 * HOUR : slot));
     const bookingId = await ctx.db.insert("ticketBookings", {
       ticketId,
@@ -703,7 +940,9 @@ export const fileTicket = internalMutation({
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
-    const rate = vendor.hourlyRateCents ? ` at $${vendor.hourlyRateCents / 100}/hr` : "";
+    const rate = vendor.hourlyRateCents
+      ? ` at $${vendor.hourlyRateCents / 100}/hr`
+      : "";
     const agentActionId = await ctx.db.insert("agentActions", {
       capability: "maintenance",
       conversationId: args.conversationId,
@@ -754,11 +993,16 @@ export const leaseForTenant = internalQuery({
 });
 
 const leaseAnswerSchema = objectSchema({
-  answer: { type: "string", description: "A direct answer in one to three plain sentences, using only the clauses." },
+  answer: {
+    type: "string",
+    description:
+      "A direct answer in one to three plain sentences, using only the clauses.",
+  },
   sections: {
     type: "array",
     items: { type: "string" },
-    description: "Section numbers of every clause the answer relies on, exactly as given, e.g. '8.2'.",
+    description:
+      "Section numbers of every clause the answer relies on, exactly as given, e.g. '8.2'.",
   },
 });
 
@@ -768,7 +1012,9 @@ async function answerLeaseQuestion(
   turn: Turn,
   question: string,
 ): Promise<ToolResult> {
-  const found = await ctx.runQuery(internal.assistant.leaseForTenant, { tenantId: turn.userId });
+  const found = await ctx.runQuery(internal.assistant.leaseForTenant, {
+    tenantId: turn.userId,
+  });
   const log = (result: unknown) =>
     ctx.runMutation(internal.assistant.logAction, {
       conversationId: turn.conversationId,
@@ -781,15 +1027,18 @@ async function answerLeaseQuestion(
     });
   if (found === null || found.clauses.length === 0) {
     const output = {
-      answer: found === null
-        ? "There is no active lease on Dweller for this renter, so there are no lease terms to answer from."
-        : "This lease has no clauses on Dweller yet, so there is no lease text to answer from.",
+      answer:
+        found === null
+          ? "There is no active lease on Dweller for this renter, so there are no lease terms to answer from."
+          : "This lease has no clauses on Dweller yet, so there is no lease text to answer from.",
       citations: [],
     };
     return { output, agentActionId: await log(output), capability: "rent" };
   }
   const { lease, clauses, address } = found;
-  const leaseText = clauses.map((c) => `Section ${c.section}, ${c.heading}:\n${c.text}`).join("\n\n");
+  const leaseText = clauses
+    .map((c) => `Section ${c.section}, ${c.heading}:\n${c.text}`)
+    .join("\n\n");
   const response = await respond(client, {
     instructions: `You answer a renter's question about their lease using only its clauses below. If the clauses don't settle the question, say the lease doesn't address it and cite nothing.
 
@@ -797,9 +1046,19 @@ Lease for ${address ?? "the unit"}: rent $${lease.rentMonthlyCents / 100}/month 
 
 ${leaseText}`,
     input: [{ role: "user", content: question }],
-    text: { format: { type: "json_schema", name: "lease_answer", strict: true, schema: leaseAnswerSchema } },
+    text: {
+      format: {
+        type: "json_schema",
+        name: "lease_answer",
+        strict: true,
+        schema: leaseAnswerSchema,
+      },
+    },
   });
-  const parsed = JSON.parse(response.output_text) as { answer: string; sections: string[] };
+  const parsed = JSON.parse(response.output_text) as {
+    answer: string;
+    sections: string[];
+  };
   // Quotes come from the stored clause rows, never from the model.
   const citations = clauses
     .filter((c) => parsed.sections.includes(c.section))
@@ -826,17 +1085,31 @@ function openAiClient() {
 
 async function respond(
   client: OpenAI,
-  request: Omit<Parameters<OpenAI["responses"]["create"]>[0], "model" | "stream">,
+  request: Omit<
+    Parameters<OpenAI["responses"]["create"]>[0],
+    "model" | "stream"
+  >,
 ): Promise<Response> {
   let response: Response;
   try {
-    response = await client.responses.create({ ...request, model: MODEL, stream: false });
+    response = await client.responses.create({
+      ...request,
+      model: MODEL,
+      stream: false,
+    });
   } catch (error) {
     if (error instanceof OpenAI.APIError && error.status === 401) {
-      throw new ConvexError("OpenAI rejected the OPENAI_API_KEY set on this Convex deployment. Update it in the Convex dashboard.");
+      throw new ConvexError(
+        "OpenAI rejected the OPENAI_API_KEY set on this Convex deployment. Update it in the Convex dashboard.",
+      );
     }
-    if (error instanceof OpenAI.APIError && error.type === "insufficient_quota") {
-      throw new ConvexError(`The OpenAI account behind OPENAI_API_KEY has no credits for ${MODEL}. Add credits in the OpenAI dashboard and try again.`);
+    if (
+      error instanceof OpenAI.APIError &&
+      error.type === "insufficient_quota"
+    ) {
+      throw new ConvexError(
+        `The OpenAI account behind OPENAI_API_KEY has no credits for ${MODEL}. Add credits in the OpenAI dashboard and try again.`,
+      );
     }
     if (error instanceof OpenAI.APIError && error.status === 429) {
       throw new ConvexError("OpenAI is busy right now. Try again in a minute.");
@@ -844,7 +1117,9 @@ async function respond(
     throw error;
   }
   if (response.status !== "completed") {
-    throw new ConvexError("The assistant couldn't finish that reply. Try again.");
+    throw new ConvexError(
+      "The assistant couldn't finish that reply. Try again.",
+    );
   }
   return response;
 }

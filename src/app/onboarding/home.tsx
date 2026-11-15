@@ -1,3 +1,4 @@
+import { useMutation } from "convex/react";
 import { useEffect, useRef } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import Animated, {
@@ -14,9 +15,11 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/Button";
 import { DoorScene } from "@/components/DoorScene";
 import { useOnboarding } from "@/features/onboarding/OnboardingProvider";
+import { filtersFromAnswers } from "@/lib/filters";
 import { colors, space, type } from "@/theme";
 
 export default function WelcomeHomeScreen() {
@@ -25,6 +28,7 @@ export default function WelcomeHomeScreen() {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const leaving = useRef(false);
+  const savePreferences = useMutation(api.people.saveRenterPreferences);
   const doorSize = Math.round(height * 0.26);
 
   const knob = useSharedValue(1);
@@ -45,6 +49,19 @@ export default function WelcomeHomeScreen() {
   function finish() {
     if (leaving.current) return;
     leaving.current = true;
+    if (role === "renter") {
+      savePreferences({
+        preferences: {
+          location: renter.location.trim() || undefined,
+          budget: renter.budget ?? undefined,
+          moveIn: renter.moveIn ?? undefined,
+          space: renter.space ?? undefined,
+          bedrooms: renter.bedrooms ?? undefined,
+          amenities: renter.amenities,
+          filters: filtersFromAnswers(renter, Date.now()),
+        },
+      }).catch(() => {});
+    }
     if (reduceMotion) {
       complete();
       return;

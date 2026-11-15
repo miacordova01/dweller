@@ -2,11 +2,13 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { LogBox } from "react-native";
 
 import { OnboardingProvider, useOnboarding } from "@/features/onboarding/OnboardingProvider";
 import { colors } from "@/theme";
 
 SplashScreen.preventAutoHideAsync();
+LogBox.ignoreLogs(["ConvexError"]);
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
   unsavedChangesWarning: false,
