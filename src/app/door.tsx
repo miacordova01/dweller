@@ -1,6 +1,12 @@
 import { Redirect, router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import Animated, {
   Easing,
   FadeIn,
@@ -19,6 +25,7 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { DoorScene } from "@/components/DoorScene";
 import { Wordmark } from "@/components/Wordmark";
+import { useOnboarding } from "@/features/onboarding/OnboardingProvider";
 import { colors, space, type } from "@/theme";
 
 const SKIP_DELAY_MS = 600;
@@ -47,6 +54,7 @@ export default function DoorScreen() {
   const doorSize = Math.round(height * 0.31);
   const bloomSize = Math.hypot(width, height);
 
+  const { completed, enter } = useOnboarding();
   const [showSkip, setShowSkip] = useState(false);
   const playing = useRef(false);
   const left = useRef(false);
@@ -64,32 +72,56 @@ export default function DoorScreen() {
   function goToWelcome() {
     if (left.current) return;
     left.current = true;
-    router.replace("/welcome");
+    if (completed) enter();
+    else router.replace("/welcome");
   }
 
   function open() {
     if (playing.current) return;
     playing.current = true;
-    knob.set(withSequence(withTiming(0.75, { duration: 110 }), withSpring(1, { damping: 9, stiffness: 260 })));
-    hinge.set(withDelay(150, withSpring(1, { duration: 800, dampingRatio: 0.85 })));
-    peek.set(withDelay(PEEK_DELAY_MS, withTiming(1, { duration: 550, easing: Easing.out(Easing.cubic) })));
+    knob.set(
+      withSequence(
+        withTiming(0.75, { duration: 110 }),
+        withSpring(1, { damping: 9, stiffness: 260 }),
+      ),
+    );
+    hinge.set(
+      withDelay(150, withSpring(1, { duration: 800, dampingRatio: 0.85 })),
+    );
+    peek.set(
+      withDelay(
+        PEEK_DELAY_MS,
+        withTiming(1, { duration: 550, easing: Easing.out(Easing.cubic) }),
+      ),
+    );
     expand.set(
       withDelay(
         EXPAND_DELAY_MS,
-        withTiming(1, { duration: EXPAND_DURATION_MS, easing: Easing.bezier(0.65, 0, 0.35, 1) }, (finished) => {
-          if (finished) scheduleOnRN(goToWelcome);
-        }),
+        withTiming(
+          1,
+          {
+            duration: EXPAND_DURATION_MS,
+            easing: Easing.bezier(0.65, 0, 0.35, 1),
+          },
+          (finished) => {
+            if (finished) scheduleOnRN(goToWelcome);
+          },
+        ),
       ),
     );
   }
 
   const wordmarkStyle = useAnimatedStyle(() => ({
     opacity: interpolate(expand.get(), [0.05, 0.45], [1, 0], "clamp"),
-    transform: [{ translateY: interpolate(expand.get(), [0, 0.45], [0, 16], "clamp") }],
+    transform: [
+      { translateY: interpolate(expand.get(), [0, 0.45], [0, 16], "clamp") },
+    ],
   }));
   const bloomStyle = useAnimatedStyle(() => ({
     opacity: interpolate(expand.get(), [0.35, 0.75], [0, 1], "clamp"),
-    transform: [{ scale: interpolate(expand.get(), [0.35, 1], [0.35, 2.2], "clamp") }],
+    transform: [
+      { scale: interpolate(expand.get(), [0.35, 1], [0.35, 2.2], "clamp") },
+    ],
   }));
   const whiteoutStyle = useAnimatedStyle(() => ({
     opacity: interpolate(expand.get(), [0.7, 1], [0, 1], "clamp"),
@@ -100,15 +132,36 @@ export default function DoorScreen() {
   return (
     <View style={styles.screen}>
       <Backdrop width={width} height={height} />
-      <Pressable testID="door" style={styles.center} onPress={open} accessibilityRole="button" accessibilityLabel="Open the door">
-        <DoorScene size={doorSize} hinge={hinge} peek={peek} knobScale={knob} expand={expand} />
+      <Pressable
+        testID="door"
+        style={styles.center}
+        onPress={open}
+        accessibilityRole="button"
+        accessibilityLabel="Open the door"
+      >
+        <DoorScene
+          size={doorSize}
+          hinge={hinge}
+          peek={peek}
+          knobScale={knob}
+          expand={expand}
+        />
         <Animated.View style={[{ marginTop: doorSize * 0.24 }, wordmarkStyle]}>
           <Wordmark fontSize={Math.round(width * 0.135)} />
         </Animated.View>
       </Pressable>
       <Animated.View
         pointerEvents="none"
-        style={[styles.abs, { width: bloomSize, height: bloomSize, left: (width - bloomSize) / 2, top: (height - bloomSize) / 2 }, bloomStyle]}
+        style={[
+          styles.abs,
+          {
+            width: bloomSize,
+            height: bloomSize,
+            left: (width - bloomSize) / 2,
+            top: (height - bloomSize) / 2,
+          },
+          bloomStyle,
+        ]}
       >
         <Svg width={bloomSize} height={bloomSize}>
           <Defs>
@@ -121,10 +174,26 @@ export default function DoorScreen() {
           <Rect width={bloomSize} height={bloomSize} fill="url(#bloom)" />
         </Svg>
       </Animated.View>
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.white }, whiteoutStyle]} />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: colors.white },
+          whiteoutStyle,
+        ]}
+      />
       {showSkip && (
-        <Animated.View entering={FadeIn.duration(250)} style={[styles.skip, { top: insets.top + space.sm }]}>
-          <Pressable testID="door-skip" onPress={goToWelcome} hitSlop={12} accessibilityRole="button" accessibilityLabel="Skip intro">
+        <Animated.View
+          entering={FadeIn.duration(250)}
+          style={[styles.skip, { top: insets.top + space.sm }]}
+        >
+          <Pressable
+            testID="door-skip"
+            onPress={goToWelcome}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Skip intro"
+          >
             <Text style={type.caption}>Skip</Text>
           </Pressable>
         </Animated.View>
@@ -135,7 +204,12 @@ export default function DoorScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#F1EEFD" },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", paddingBottom: space.xl },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: space.xl,
+  },
   abs: { position: "absolute" },
   skip: { position: "absolute", right: space.xl, padding: space.sm },
 });

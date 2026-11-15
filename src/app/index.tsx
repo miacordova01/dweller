@@ -38,12 +38,14 @@ function FilterPill({
   label,
   active = false,
   location = false,
+  badge,
   onPress,
 }: {
   icon: string;
   label: string;
   active?: boolean;
   location?: boolean;
+  badge?: number;
   onPress: () => void;
 }) {
   return (
@@ -55,24 +57,22 @@ function FilterPill({
       style={({ pressed }) => [
         styles.pill,
         location && styles.pillLocation,
-        active && styles.pillActive,
         pressed && styles.pressed,
       ]}
     >
-      <Glyph name={icon} size={15} color={active ? C.purple : C.ink} />
+      <Glyph name={icon} size={15} color={C.ink} />
       <Text
         style={[styles.pillLabel, active && styles.pillLabelActive]}
         numberOfLines={1}
       >
         {label}
       </Text>
-      {location && (
-        <Glyph
-          name="chevron.down"
-          size={11}
-          color={active ? C.purple : C.ink}
-        />
-      )}
+      {badge ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      ) : null}
+      {location && <Glyph name="chevron.down" size={11} color={C.ink} />}
     </Pressable>
   );
 }
@@ -155,8 +155,8 @@ export default function Discover() {
         />
         <FilterPill
           icon="slider.horizontal.3"
-          label={applied ? `Filters · ${applied}` : "Filters"}
-          active={applied > 0}
+          label="Filters"
+          badge={applied}
           onPress={() => setSheetOpen(true)}
         />
         <FilterPill
@@ -291,9 +291,18 @@ const styles = StyleSheet.create({
     borderColor: C.line,
   },
   pillLocation: { backgroundColor: C.skySoft, borderColor: C.skySoft },
-  pillActive: { backgroundColor: C.lavender, borderColor: C.purple },
   pillLabel: { ...T.body, fontSize: 14, maxWidth: 160 },
-  pillLabelActive: { ...fonts.bold, color: C.purple },
+  pillLabelActive: { ...fonts.bold },
+  badge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    backgroundColor: C.purple,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { ...fonts.bold, fontSize: 11, color: C.white },
   pressed: { opacity: 0.7 },
   banner: {
     flexDirection: "row",

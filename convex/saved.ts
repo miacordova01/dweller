@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { withPhotoUrls } from "./listings";
 import { currentRenter } from "./people";
 
 export const listingIds = query({
@@ -37,5 +38,24 @@ export const toggle = mutation({
     }
     await ctx.db.insert("savedListings", { renterId: renter.userId, listingId });
     return { saved: true };
+  },
+});
+
+// The renter's hearted listings, most recently saved first.
+export const listings = query({
+  args: {},
+  handler: async (ctx) => {
+    const renter = await currentRenter(ctx);
+    if (renter === null) return [];
+    const saved = await ctx.db
+      .query("savedListings")
+      .withIndex("by_renter", (q) => q.eq("renterId", renter.userId))
+      .order("desc")
+      .take(100);
+    const listings = await Promise.all(saved.map((s) => ctx.db.get("listings", s.listingId)));
+    return await withPhotoUrls(
+      ctx,
+      listings.filter((l): l is NonNullable<typeof l> => l !== null && l.status !== "draft"),
+    );
   },
 });

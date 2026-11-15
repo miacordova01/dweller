@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, type MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { currentLandlord, currentRenter } from "./people";
 
 export const TOUR_MINUTES = 30;
@@ -143,5 +143,30 @@ export const decline = mutation({
     const tour = await decideTour(ctx, tourId, landlord.userId, "declined");
     await settleAgentProposal(ctx, tour, landlord.userId);
     return null;
+  },
+});
+
+// The current renter's tours with the listing they're for, soonest first.
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const renter = await currentRenter(ctx);
+    if (renter === null) return [];
+    const tours = await ctx.db
+      .query("tours")
+      .withIndex("by_renter_time", (q) => q.eq("renterId", renter.userId))
+      .take(100);
+    const withListings = await Promise.all(
+      tours.map(async (tour) => {
+        const listing = await ctx.db.get("listings", tour.listingId);
+        return {
+          ...tour,
+          address: listing?.address ?? "Listing removed",
+          neighborhood: listing?.neighborhood ?? null,
+          photoUrl: listing?.photoUrls[0] ?? null,
+        };
+      }),
+    );
+    return withListings.sort((a, b) => a.scheduledFor - b.scheduledFor);
   },
 });

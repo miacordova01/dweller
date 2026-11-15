@@ -1,18 +1,14 @@
 import { useQuery } from "convex/react";
 import { useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "../../convex/_generated/api";
 import { AiMark } from "@/components/discovery/AiMark";
 import { ImportSheet } from "@/components/discovery/ImportSheet";
-import { EmptyState } from "@/components/EmptyState";
-import { Icon } from "@/components/Icon";
-import { InAppButton } from "@/components/InAppButton";
+import { Action, C, Glyph, Screen, Section, T } from "@/components/DwellerUI";
 import { ListingCard } from "@/components/ListingCard";
-import { ScreenTitle } from "@/components/ScreenTitle";
 import { useSavedListings } from "@/lib/saved";
-import { colors, radius, shadow, space, type } from "@/theme";
+import { router } from "expo-router";
 
 function ImportEntry({ onPress }: { onPress: () => void }) {
   return (
@@ -25,76 +21,69 @@ function ImportEntry({ onPress }: { onPress: () => void }) {
     >
       <AiMark size="large" />
       <View style={styles.importText}>
-        <Text style={type.label}>Add from link or screenshot</Text>
-        <Text style={type.caption}>Turn an Instagram, TikTok or Craigslist post into a listing card</Text>
+        <Text style={T.label}>Add from link or screenshot</Text>
+        <Text style={T.muted}>Turn an Instagram, TikTok or Craigslist post into a listing card</Text>
       </View>
-      <Icon name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" }} size={14} color={colors.inkMuted} />
+      <Glyph name="chevron.right" size={14} color={C.muted} />
     </Pressable>
   );
 }
 
 export default function Saved() {
-  const insets = useSafeAreaInsets();
+  const saved = useQuery(api.saved.listings);
   const finds = useQuery(api.listings.myFinds);
   const [importOpen, setImportOpen] = useState(false);
   const { isSaved, toggle } = useSavedListings();
   const [now] = useState(() => Date.now());
-  const openImport = () => setImportOpen(true);
 
   return (
-    <View style={styles.screen}>
-      <FlatList
-        testID="saved-feed"
-        data={finds ?? []}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => (
-          <ListingCard listing={item} now={now} saved={isSaved(item._id)} onToggleSave={() => toggle(item._id)} />
-        )}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <ScreenTitle title="Saved" subtitle="Homes you found anywhere, side by side with Dweller listings." />
-            {finds?.length ? <ImportEntry onPress={openImport} /> : null}
+    <Screen tab="Saved" title="Saved">
+      <ImportEntry onPress={() => setImportOpen(true)} />
+
+      <Section title="Saved homes" />
+      {saved === undefined ? (
+        <ActivityIndicator color={C.muted} />
+      ) : saved.length === 0 ? (
+        <View style={styles.empty}>
+          <Glyph name="heart" size={24} color={C.purple} />
+          <Text style={[T.muted, styles.center]}>Tap the heart on any home in Discover and it lands here.</Text>
+          <View style={styles.emptyAction}>
+            <Action label="Browse Discover" secondary onPress={() => router.replace("/")} />
           </View>
-        }
-        ListEmptyComponent={
-          finds === undefined ? (
-            <ActivityIndicator color={colors.inkMuted} style={styles.loading} />
-          ) : (
-            <View>
-              <EmptyState
-                title="Nothing saved yet"
-                body="Bring in a listing from Instagram, TikTok or a link and Dweller turns it into a card you can compare."
-              />
-              <View style={styles.emptyAction}>
-                <InAppButton testID="empty-import" label="Import a listing" onPress={openImport} />
-              </View>
-            </View>
-          )
-        }
-        style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.md }]}
-        showsVerticalScrollIndicator={false}
-      />
+        </View>
+      ) : (
+        saved.map((listing) => (
+          <ListingCard key={listing._id} listing={listing} now={now} saved={isSaved(listing._id)} onToggleSave={() => toggle(listing._id)} />
+        ))
+      )}
+
+      {finds !== undefined && finds.length > 0 && (
+        <>
+          <Section title="Your finds" />
+          {finds.map((listing) => (
+            <ListingCard key={listing._id} listing={listing} now={now} saved={isSaved(listing._id)} onToggleSave={() => toggle(listing._id)} />
+          ))}
+        </>
+      )}
       <ImportSheet visible={importOpen} onClose={() => setImportOpen(false)} />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingHorizontal: 20, paddingBottom: space.xxl, gap: space.xl },
-  header: { gap: space.lg },
   importEntry: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space.md,
-    padding: space.lg,
-    borderRadius: radius.card,
-    backgroundColor: colors.white,
-    boxShadow: shadow.card,
+    gap: 12,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: C.white,
+    borderWidth: 1,
+    borderColor: C.lineSoft,
   },
   pressed: { opacity: 0.85 },
   importText: { flex: 1, gap: 2 },
-  loading: { marginTop: space.xxl },
-  emptyAction: { flexDirection: "row", paddingHorizontal: space.xl },
+  empty: { alignItems: "center", gap: 8, paddingVertical: 24 },
+  center: { textAlign: "center" },
+  emptyAction: { flexDirection: "row", width: 200, marginTop: 8 },
 });
