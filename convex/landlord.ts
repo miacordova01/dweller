@@ -1,4 +1,3 @@
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
@@ -8,24 +7,10 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-
-const DEMO_LANDLORD_NAME = "Dana Whitfield";
-
-async function currentLandlord(ctx: QueryCtx) {
-  const userId = await getAuthUserId(ctx);
-  if (userId !== null) {
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .unique();
-    return profile?.role === "landlord" ? profile : null;
-  }
-  const landlords = await ctx.db
-    .query("profiles")
-    .withIndex("by_role", (q) => q.eq("role", "landlord"))
-    .take(100);
-  return landlords.find((p) => p.displayName === DEMO_LANDLORD_NAME) ?? null;
-}
+import { cancelBooking, confirmBooking } from "./maintenance";
+import { currentLandlord, DEMO_LANDLORD_NAME } from "./people";
+import { formatLocal } from "./time";
+import { decideTour } from "./tours";
 
 async function displayName(ctx: QueryCtx, userId: Id<"users">) {
   const profile = await ctx.db
@@ -95,7 +80,7 @@ export const overview = query({
 
     const quoteItems = [];
     for (const action of approvals) {
-      if (action.tool !== "acceptVendorQuote") continue;
+      if (action.tool !== "acceptVendorQuote" && action.tool !== "contactVendor") continue;
       const ticket = await ctx.db.get("maintenanceTickets", action.args.ticketId);
       const vendor = await ctx.db.get("vendors", action.args.vendorId);
       if (ticket === null || vendor === null) continue;
@@ -104,7 +89,7 @@ export const overview = query({
         id: action._id,
         ticketTitle: ticket.title,
         vendorName: vendor.name,
-        amountCents: action.args.quoteCents as number,
+        amountCents: (action.args.quoteCents ?? action.args.estimatedCostCents) as number,
         listing: await listingCard(ctx, ticket.listingId),
         at: action._creationTime,
       });
@@ -270,6 +255,22 @@ async function describeAction(ctx: QueryCtx, action: Doc<"agentActions">) {
       listing: ticket ? await listingCard(ctx, ticket.listingId) : null,
     };
   }
+  if (action.tool === "contactVendor") {
+    const ticket = await ctx.db.get("maintenanceTickets", args.ticketId);
+    const vendor = await ctx.db.get("vendors", args.vendorId);
+    return {
+      ...base,
+      kind: "contactVendor" as const,
+      tool: action.tool,
+      vendorName: vendor?.name ?? "the vendor",
+      estimatedCostCents: (args.estimatedCostCents as number | undefined) ?? null,
+      slot: args.slot as number,
+      ticket: ticket
+        ? { title: ticket.title, urgency: ticket.urgency, tenantName: await displayName(ctx, ticket.tenantId) }
+        : null,
+      listing: ticket ? await listingCard(ctx, ticket.listingId) : null,
+    };
+  }
   if (action.tool === "sendRentReminder") {
     const lease = await ctx.db.get("leases", args.leaseId);
     const payment = await ctx.db.get("payments", args.paymentId);
@@ -338,10 +339,71 @@ export const me = query({
   },
 });
 
+// Approving an agent proposal performs it: the tour or repair visit the
+// agent proposed becomes real, the outcome is written to result, and the
+// action is executed. Tools with nothing to perform here yet (such as
+// sendRentReminder, which has no delivery channel) are only marked approved.
+async function perform(
+  ctx: MutationCtx,
+  action: Doc<"agentActions">,
+  landlordId: Id<"users">,
+) {
+  const args = action.args ?? {};
+  if (action.tool === "bookTour") {
+    const tour = await decideTour(ctx, args.tourId, landlordId, "confirmed");
+    const listing = await ctx.db.get("listings", tour.listingId);
+    if (action.conversationId !== undefined) {
+      await ctx.db.insert("messages", {
+        conversationId: action.conversationId,
+        authorRole: "agent",
+        text: `Good news: the owner confirmed your tour of ${listing?.address ?? "the listing"} on ${formatLocal(tour.scheduledFor)}.`,
+        attachmentStorageIds: [],
+        agentActionId: action._id,
+      });
+      await ctx.db.patch("conversations", action.conversationId, { lastMessageAt: Date.now() });
+    }
+    return { tourId: tour._id, tourStatus: tour.status, scheduledFor: tour.scheduledFor };
+  }
+  if (action.tool === "contactVendor" || action.tool === "acceptVendorQuote") {
+    const { booking, ticket, confirmedFor } = await confirmBooking(
+      ctx,
+      args.bookingId,
+      landlordId,
+      args.slot,
+    );
+    return {
+      bookingId: booking._id,
+      bookingStatus: "confirmed",
+      ticketId: ticket._id,
+      ticketStatus: "scheduled",
+      vendorId: booking.vendorId,
+      confirmedFor,
+    };
+  }
+  return null;
+}
+
+async function undo(
+  ctx: MutationCtx,
+  action: Doc<"agentActions">,
+  landlordId: Id<"users">,
+) {
+  const args = action.args ?? {};
+  if (action.tool === "bookTour") {
+    const tour = await decideTour(ctx, args.tourId, landlordId, "declined");
+    return { tourId: tour._id, tourStatus: tour.status };
+  }
+  if (action.tool === "contactVendor" || action.tool === "acceptVendorQuote") {
+    await cancelBooking(ctx, args.bookingId, landlordId);
+    return { bookingId: args.bookingId, bookingStatus: "cancelled" };
+  }
+  return null;
+}
+
 async function decide(
   ctx: MutationCtx,
   actionId: Id<"agentActions">,
-  status: "approved" | "rejected",
+  approved: boolean,
 ) {
   const landlord = await currentLandlord(ctx);
   if (landlord === null) throw new ConvexError("Sign in as a landlord to decide.");
@@ -352,24 +414,47 @@ async function decide(
   if (!action.requiresApproval || action.status !== "proposed") {
     throw new ConvexError("This request has already been decided.");
   }
-  await ctx.db.patch("agentActions", actionId, {
-    status,
-    approverId: landlord.userId,
-    approvedAt: Date.now(),
-  });
+  const decision = { approverId: landlord.userId, approvedAt: Date.now() };
+  // perform and undo check their target before writing, so a ConvexError
+  // here means nothing changed: the tour or booking moved on since the agent
+  // proposed it. Record that instead of leaving the request stuck in the queue.
+  try {
+    if (!approved) {
+      const result = await undo(ctx, action, landlord.userId);
+      await ctx.db.patch("agentActions", actionId, {
+        ...decision,
+        status: "rejected",
+        result: result ?? undefined,
+      });
+      return null;
+    }
+    const result = await perform(ctx, action, landlord.userId);
+    await ctx.db.patch("agentActions", actionId, {
+      ...decision,
+      status: result === null ? "approved" : "executed",
+      result: result ?? undefined,
+    });
+  } catch (error) {
+    if (!(error instanceof ConvexError)) throw error;
+    await ctx.db.patch("agentActions", actionId, {
+      ...decision,
+      status: "failed",
+      error: typeof error.data === "string" ? error.data : "The request could not be carried out.",
+    });
+  }
   return null;
 }
 
 export const approve = mutation({
   args: { actionId: v.id("agentActions") },
   returns: v.null(),
-  handler: (ctx, { actionId }) => decide(ctx, actionId, "approved"),
+  handler: (ctx, { actionId }) => decide(ctx, actionId, true),
 });
 
 export const decline = mutation({
   args: { actionId: v.id("agentActions") },
   returns: v.null(),
-  handler: (ctx, { actionId }) => decide(ctx, actionId, "rejected"),
+  handler: (ctx, { actionId }) => decide(ctx, actionId, false),
 });
 
 async function createPerson(
