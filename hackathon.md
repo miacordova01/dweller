@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth
 - **AI models:** gpt-6-luna
 - **Started:** 2026-11-15T18:45:39Z
-- **Last updated:** 2026-11-15T20:25:00Z
+- **Last updated:** 2026-11-15T23:30:00Z
 
 ## Log
 
@@ -86,9 +86,58 @@ amenities and matching photography. The mutation skips any address already
 present so it can be run repeatedly. Convex features: internal mutation
 (`convex/seed.ts`).
 
+
+### 2026-11-15 - 03e003c
+Made the assistant and the approvals queue real. `convex/assistant.ts` runs one
+turn of a single Dweller assistant: it appends the message, calls `gpt-6-luna`
+through the Responses API with four function tools, executes them, and appends
+the reply. `findListings` searches the same query the feed uses, so the agent
+and the UI can never disagree. `bookTour` resolves the landlord, reuses or
+creates the inquiry, reads the landlord's `availability` and picks the first
+free slot that does not overlap an existing tour, then inserts a `proposed`
+tour and a `requiresApproval` row in `agentActions`. `createMaintenanceTicket`
+runs a structured call to infer category, urgency, diagnosis and a cost
+estimate, creates the ticket and proposes the landlord's cheapest matching
+vendor. `answerLeaseQuestion` reads the tenant's lease and its `leaseClauses`
+and answers from those rows only — the model returns section numbers and the
+quoted text always comes from the stored clause, so a citation cannot be
+invented.
+
+Approvals stopped being decorative in the same change. `approve` and `decline`
+switch on the proposed tool and perform it: approving a `bookTour` confirms the
+tour and posts the confirmation into the renter's conversation; approving a
+`contactVendor` confirms the booking and moves the ticket to `scheduled`. The
+action records its `result` and becomes `executed`, or `failed` if the target
+moved on. Convex features: actions, mutations, indexes, components
+(`convex/assistant.ts`, `convex/landlord.ts`, `convex/tours.ts`,
+`convex/maintenance.ts`, `convex/saved.ts`, `convex/people.ts`).
+
+Proven on the dev deployment rather than asserted: the assistant booked a tour
+for 10:00 because showing hours start then and an existing tour sat at 10:30;
+approving it flipped the tour to `confirmed` and the action to `executed`; a
+lease question returned "within the five-day grace period" citing Section 3.2.
+
+### 2026-11-15 - abb055d
+Rebuilt every screen on a shared design system and connected the demo path.
+`Screen` owns the layout — a content region and then the tab bar — so no screen
+can draw behind the bar. `listings.discover` gained real filter arguments and
+onboarding answers now persist to `profiles.preferences`, so Discover opens
+filtered to what the renter asked for, with an empty state that offers to clear.
+Hearts call `saved.toggle`, Schedule tour calls `tours.propose`, the maintenance
+form calls `maintenance.create`, and the AI composer calls `assistant.ask`. A
+tour shows as awaiting approval and updates to confirmed in place when the
+landlord approves, because `assistant.conversation` joins each message to its
+agent action. Convex features: queries, mutations, indexes, schema
+(`convex/listings.ts`, `convex/people.ts`, `convex/schema.ts`).
+
+### 2026-11-15 - e2f5af4
+The door now opens on every cold launch, so the opening is reachable in a demo.
+Saved, Activity and Home read real data — hearted homes, tours from
+`tours.mine`, repairs from `maintenance.mine`, and the lease from
+`people.currentLease` — replacing hard-coded rows. Listings whose photo fails to
+load show a deliberate panel rather than an empty block.
+
 ### 2026-11-15 - working tree
-In progress across four threads: lighting and depth on the door to match the
-brand reference, splitting the feed into marketplace supply and the renter's own
-imported finds, the renter's in-app screens, and the landlord side including an
-approvals queue that reads pending `agentActions` and lets a human approve or
-decline what an agent has proposed.
+Remaining: landlord property detail, AI-drafted inbox replies, and sign-in.
+Convex Auth is mounted as a component but no sign-in flow exists, so the app
+resolves a seeded demo renter and landlord. Rent is displayed and never charged.
