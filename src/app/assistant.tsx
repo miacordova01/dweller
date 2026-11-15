@@ -194,6 +194,7 @@ export default function Assistant() {
     conversationId ? { conversationId } : "skip",
   );
   const messages = live?.messages ?? [];
+  const lastForAction = new Map(messages.filter((m) => m.agentActionId).map((m) => [m.agentActionId, m._id]));
   const busy = pending !== null;
 
   async function send(text = draft.trim()) {
@@ -307,7 +308,7 @@ export default function Assistant() {
                     <View style={[styles.bubble, styles.agent]}>
                       <Text style={T.body}>{m.text}</Text>
                     </View>
-                    {m.action && <ActionCard action={m.action} />}
+                    {m.action && lastForAction.get(m.agentActionId) === m._id && <ActionCard action={m.action} />}
                   </View>
                 ) : (
                   <View key={m._id} style={[styles.bubble, styles.mine]}>
