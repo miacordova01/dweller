@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { Image } from "expo-image";
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -216,16 +216,9 @@ function FindsEmpty({ onImport }: { onImport: () => void }) {
   );
 }
 
-type ListingForm = typeof emptyForm;
-
-function AddListingForm({
-  form,
-  setForm,
-}: {
-  form: ListingForm;
-  setForm: Dispatch<SetStateAction<ListingForm>>;
-}) {
+function AddListingForm() {
   const addListing = useMutation(api.listings.add);
+  const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -318,7 +311,6 @@ function AddListingForm({
 export default function ListingsScreen() {
   const [feed, setFeed] = useState<Feed>("discover");
   const [importOpen, setImportOpen] = useState(false);
-  const [draft, setDraft] = useState(emptyForm);
   const discover = useQuery(api.listings.discover);
   const finds = useQuery(api.listings.myFinds);
   const listings = feed === "discover" ? discover : finds;
@@ -327,7 +319,6 @@ export default function ListingsScreen() {
   return (
     <View style={styles.screen}>
       <FlatList
-        key={feed}
         data={listings ?? []}
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => <ListingCard listing={item} />}
@@ -342,9 +333,9 @@ export default function ListingsScreen() {
           </View>
         }
         ListFooterComponent={
-          feed === "discover" ? (
-            <AddListingForm form={draft} setForm={setDraft} />
-          ) : undefined
+          <View style={feed !== "discover" && styles.hidden}>
+            <AddListingForm />
+          </View>
         }
         ListEmptyComponent={
           listings === undefined ? (
@@ -380,6 +371,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   listHeader: { gap: space.md },
+  hidden: { display: "none" },
   segmented: {
     flexDirection: "row",
     backgroundColor: colors.lavender,
