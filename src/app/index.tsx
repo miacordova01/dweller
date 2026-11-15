@@ -210,7 +210,6 @@ function FindsEmpty({ onImport }: { onImport: () => void }) {
       <Button
         testID="empty-import"
         label="Import a listing"
-        icon={<AiMark />}
         onPress={onImport}
       />
     </View>
