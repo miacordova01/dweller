@@ -75,7 +75,12 @@ function parseDate(text: string) {
   if (!match) return null;
   const [year, month, day] = match.slice(1).map(Number);
   const ms = Date.UTC(year, month - 1, day);
-  return new Date(ms).getUTCDate() === day ? ms : null;
+  const date = new Date(ms);
+  return date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+    ? ms
+    : null;
 }
 
 function ListingCard({ listing }: { listing: Doc<"listings"> }) {
