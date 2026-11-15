@@ -143,16 +143,26 @@ export default function DoorScreen() {
         accessibilityRole="button"
         accessibilityLabel="Open the door"
       >
-        <DoorScene
-          size={doorSize}
-          hinge={hinge}
-          peek={peek}
-          knobScale={knob}
-          expand={expand}
-        />
-        <Animated.View style={[{ marginTop: doorSize * 0.24 }, wordmarkStyle]}>
-          <Wordmark fontSize={Math.round(width * 0.135)} />
-        </Animated.View>
+        <View style={styles.lockup}>
+          <DoorScene
+            size={doorSize}
+            hinge={hinge}
+            peek={peek}
+            knobScale={knob}
+            expand={expand}
+          />
+          <Animated.View
+            style={[
+              {
+                marginTop: doorSize * 0.24,
+                marginLeft: -Math.round(width * 0.135 * 0.075),
+              },
+              wordmarkStyle,
+            ]}
+          >
+            <Wordmark fontSize={Math.round(width * 0.135)} />
+          </Animated.View>
+        </View>
       </Pressable>
       <Animated.View
         pointerEvents="none"
@@ -214,6 +224,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: space.xl,
   },
+  lockup: { alignItems: "flex-start" },
   abs: { position: "absolute" },
   skip: { position: "absolute", right: space.xl, padding: space.sm },
 });
